@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 
-# Aligns arbitrary DNA sequences to a PHG pangenome graph:
-# i) uses gmap to hierarchically match sequences to contributing genomes, 
-# ii) queries PHG haplotypes to obtain precomputed matches in other genomes
-#
-#TODO: cambiar si sumamos paso pangenes
+# Aligns arbitrary DNA sequences to a pangenome in up to 3 steps:
+# i) tries to match precomputed pangenes, no intergenics included,
+# ii) uses gmap to hierarchically match sequences to contributing genomes, 
+# iii) queries PHG haplotypes to obtain precomputed matches in other genomes
 #
 # J Sarria, B Contreras-Moreira
 # Copyright [2024-25] Estacion Experimental de Aula Dei-CSIC
