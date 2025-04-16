@@ -9,9 +9,13 @@
 # Copyright [2024-25] Estacion Experimental de Aula Dei-CSIC
 
 # %%
-def parseFASTASeqs(fasta):
+def parseFASTASeqs(fasta, verbose=False):
     """Takes a FASTA genome filename and parses individual sequences.
     Returns i) list of sequence names in input order, ii) dictionary with sequences."""
+
+    if verbose == True:
+        print("# INFO(parseFASTASeqs) parsing FASTA file:", fasta)
+    # regex to parse FASTA header
 
     names = []
     sequences = {}
@@ -37,6 +41,8 @@ def parseFASTASeqs(fasta):
                 sequences[name] = sequences[name] + line
             else:
                 sequences[name] = line
+                
+
 
     return names, sequences
 
@@ -526,11 +532,10 @@ def main():
     parser.add_argument(
         "--mincover",
         default=95.0,
-        help="min %coverage of gmap matches and pangenome ranges, default: 95.0",
+        help="min%coverage of gmap matches and pangenome ranges, default: 95.0",
     )
 
-    parser.add_argument('--verb', help='Increase verbosity in output')
-
+    parser.add_argument('--verb', action='store_true', help='Increase verbosity in output')
     parser.add_argument('--add_ranges', help='Add all pangenome ranges matching input sequences')
 
     args = parser.parse_args()
@@ -570,10 +575,13 @@ def main():
     print(f"# minimum identity %: {min_identity}")
     print(f"# minimum coverage %: {min_coverage}\n")
 
+    if verbose_out == True:
+        print(f"# verbose: {verbose_out}")
+
     # parse input FASTA file and process sequences one by one,
     # note it would be more efficient to process them in batch to avoid
     # repeated calls to gmap
-    names, seqs = parseFASTASeqs(fasta_file)
+    names, seqs = parseFASTASeqs(fasta_file, verbose=verbose_out)
     for seqname in names:
     
         keys = []
@@ -665,5 +673,6 @@ if __name__ == "__main__":
     import yaml
 
     main()
+
 
 
