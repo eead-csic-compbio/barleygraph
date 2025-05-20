@@ -55,7 +55,7 @@ def checkGmapDBVersion(gmap_db, ref_name):
     
     if not os.path.isfile(gmap_version_file):
         print(f"# ERROR(checkGmapVersion: file {gmap_version_file} does not exist")
-        return version_exe, version_db
+        return version_db
 
     else:
         with open (gmap_version_file) as f:
@@ -160,11 +160,11 @@ def checkRangesKeyInRef(reference_gff3,hapIDranges,bed_folder_path,coverage=75.0
 
     keys = {}
     match_tsv = ''
-    mult_mappings = 'No'
+    mult_mappings = 'No'    
     chrom, genome, start, end, strand = '','','','',''
 
-    with open(reference_gff3) as f:
-        for line in f:
+    with open(reference_gff3) as f: 
+        for line in f:  
             if not line.startswith('#'):
                 fields = line.split("\t")
                 if fields[2] == "gene":
@@ -247,7 +247,7 @@ def checkRangesKeyInRef(reference_gff3,hapIDranges,bed_folder_path,coverage=75.0
             bed_data = result.stdout.splitlines()
             if len(bed_data) > 1:
                 if(verbose == True):
-                    print(f"# WARN(checkRangesKeyInRef): more than 1 key matches: {results.stdout}")
+                    print(f"# WARN(checkRangesKeyInRef): more than 1 key matches: {result.stdout}")
                 bed_data = bed_data[0]
             
             bed_data = bed_data[0].split("\t")
@@ -437,7 +437,7 @@ def checkRangesKeysInPangenome(gff3,hapIDranges,bedfile,bed_folder_path,coverage
             graph_data = result.stdout.splitlines()
             if len(graph_data) > 1:
                 if(verbose == True):
-                    print(f"# WARN(checkRangesKeyInPangenome): more than 1 graph matches: {results.stdout}")
+                    print(f"# WARN(checkRangesKeyInPangenome): more than 1 graph matches: {result.stdout}")
                 graph_data = graph_data[0]
  
             feature = graph_data[0].split("\t")
@@ -470,7 +470,7 @@ def checkRangesKeysInPangenome(gff3,hapIDranges,bedfile,bed_folder_path,coverage
             bed_data = result.stdout.splitlines()
             if len(bed_data) > 1:
                 if(verbose == True):
-                    print(f"# WARN(checkRangesKeyInPangenome): more than 1 key matches: {results.stdout}")
+                    print(f"# WARN(checkRangesKeyInPangenome): more than 1 key matches: {result.stdout}")
                 bed_data = bed_data[0]
 
             bed_data = bed_data[0].split("\t")
