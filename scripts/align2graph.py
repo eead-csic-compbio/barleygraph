@@ -47,12 +47,13 @@ def parseFASTASeqs(fasta, verbose=False):
 
 # %%
 def checkGmapDBVersion(gmap_db, ref_name):
-    """Returns version of reference Gmap db."""
+    """Returns version of reference Gmap db, '?' by default.
+    Note that old gmap versions do not include version unumber in .version file."""
 
     version_db = '?'
 
     gmap_version_file=f'{gmap_db}/{ref_name}/{ref_name}.version'
-    
+
     if not os.path.isfile(gmap_version_file):
         print(f"# ERROR(checkGmapVersion: file {gmap_version_file} does not exist")
         return version_db
@@ -134,11 +135,20 @@ def validMatch(gff_file, min_identity, min_coverage, verbose=False):
                         gene_match = True
                         continue
                     
+                    #gmap-2024-11-20
                     #ID=query.mrna1;Name=name;Parent=genome.path1;Dir=na;coverage=100.0;identity=98.9;
+                    #gmap-2013-08-31
+                    #ID=chr1start.mrna4;Name=chr1start;Parent=chr1start.path4;coverage=99.5;identity=82.4
                     elif fields[2] == "mRNA" and gene_match == True:
                         attributes = fields[-1].split(";")  
-                        coverage = float(attributes[4].split("=")[1])   
-                        identity = float(attributes[5].split("=")[1])   
+
+                        if(attributes[3].startswith("Dir=")):    
+                            coverage = float(attributes[4].split("=")[1])
+                            identity = float(attributes[5].split("=")[1])   
+                        else:
+                            identity = float(attributes[3].split("=")[1])   
+                            coverage = float(attributes[4].split("=")[1])
+
                         if identity >= min_identity and coverage >= min_coverage:
                             gmap_match = True
                             break
