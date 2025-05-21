@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
-# Aligns arbitrary DNA sequences to a pangenome in up to 2 steps:
-# i) hierarchically gmap input sequences to included genomes, starting with reference,
+# Aligns arbitrary DNA sequences to a gmap+PHG pangenome in up to 2 steps:
+# i) hierarchically gmap input sequences to included genomes, starting from reference,
 # ii) queries PHG haplotypes to obtain precomputed matches in other included genomes
+# Returns reference-based coordinates of matched sequence
 #
 # J Sarria, B Contreras-Moreira
 # Copyright [2024-25] Estacion Experimental de Aula Dei-CSIC
@@ -544,8 +545,11 @@ def main():
         help="min%coverage of gmap matches and pangenome ranges, default: 95.0",
     )
 
+    #guess this is done from bmap_align_to_graph?
+    #parser.add_argument('--show-unmapped', action='store_true', help='Show unmapped sequences in output')
+
     parser.add_argument('--verb', action='store_true', help='Increase verbosity in output')
-    parser.add_argument('--add_ranges', help='Add all pangenome ranges matching input sequences')
+    parser.add_argument('--add_ranges', action='store_true', help='Add all pangenome ranges matching input sequences')
 
     args = parser.parse_args()
 
@@ -623,7 +627,7 @@ def main():
             print(f"{seqname}\t{matched_coords}")
             if add_ranges:
                 for key in keys:
-                    print(keys[key])
+                    print("#",keys[key])
 
             if keepTempFiles == False:
                 os.remove(temp_fasta_query)
@@ -661,7 +665,7 @@ def main():
             print(f"{seqname}\t{matched_coords}")
             if add_ranges:
                 for key in keys:
-                    print(keys[key])
+                    print("#",keys[key])
 
             if keepTempFiles == False:
                 os.remove(temp_fasta_query)
