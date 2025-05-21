@@ -9,13 +9,13 @@
 # Copyright [2024-25] Estacion Experimental de Aula Dei-CSIC
 
 # %%
-def parseFASTASeqs(fasta, verbose=False):
-    """Takes a FASTA genome filename and parses individual sequences.
-    Returns i) list of sequence names in input order, ii) dictionary with sequences."""
+def parse_fasta_file(fasta, verbose=False):
+    """Takes a FASTA filename and parses sequence names before 1st space.
+    Returns: i) list of sequence names in input order, 
+    ii) dictionary with sequence names as keys"""
 
     if verbose == True:
-        print("# INFO(parseFASTASeqs) parsing FASTA file:", fasta)
-    # regex to parse FASTA header
+        print("# INFO(parse_fasta_names) parsing FASTA file:", fasta)
 
     names = []
     sequences = {}
@@ -24,7 +24,7 @@ def parseFASTASeqs(fasta, verbose=False):
     try:
         file = open(fasta)
     except OSError as error:
-        print("# ERROR: cannot open/read file:", fasta, error)
+        print("# ERROR(parse_fasta_names): cannot open/read file:", fasta, error)
         return [],{}
 
     for line in file:
@@ -35,28 +35,26 @@ def parseFASTASeqs(fasta, verbose=False):
                 name = seq_name_match.group(1)
                 names.append(name)
             else:
-                print("# ERROR: cannot parse FASTA header:", header)
+                print("# ERROR(parse_fasta_names): cannot parse header:", header)
         else:
             if name in sequences:
                 sequences[name] = sequences[name] + line
             else:
                 sequences[name] = line
                 
-
-
     return names, sequences
 
 # %%
-def checkGmapDBVersion(gmap_db, ref_name):
+def check_gmapdb_version(gmap_db, ref_name):
     """Returns version of reference Gmap db, '?' by default.
-    Note that old gmap versions do not include version unumber in .version file."""
+    Note that old gmap versions do not include version string in file.version."""
 
     version_db = '?'
 
     gmap_version_file=f'{gmap_db}/{ref_name}/{ref_name}.version'
 
     if not os.path.isfile(gmap_version_file):
-        print(f"# ERROR(checkGmapVersion: file {gmap_version_file} does not exist")
+        print(f"# ERROR(check_gmapdb_version: file {gmap_version_file} does not exist")
         return version_db
 
     else:
@@ -68,7 +66,7 @@ def checkGmapDBVersion(gmap_db, ref_name):
     return version_db
 
 # %%
-def checkGmapVersion(gmap_path):
+def check_gmap_version(gmap_path):
     """Returns version of Gmap binary/executable."""
 
     version_exe = '?'
@@ -81,68 +79,66 @@ def checkGmapVersion(gmap_path):
 
         #Part of GMAP package, version 2024-11-20
         data = result.stdout.splitlines()
-        version_exe = data[2]
+        version_exe = data[2].split()[5]
 
     except subprocess.CalledProcessError as e:
-        print(f'# ERROR(checkGmapVersion): {e.cmd} failed: {e.stderr}')
+        print(f'# ERROR(check_gmap_version): {e.cmd} failed: {e.stderr}')
 
     return version_exe
 
 # %%
-def getTempFASTAFile(query_name, fasta_sequence, prefix_string="temp",
+def write_temp_fasta_file(names, seqs, prefix_string="temp",
                      temp_path="/tmp/", suffix_string=".fna",
                      verbose=False):
     """Takes up to 5 strings + 1 Boolean: 
-    i) query name, ii) sequence, iii) temp prefix, iv) temp path, v) temp suffix/extension, 
-    vi) verbose.
-    Creates a temporary FASTA file with passed query sequence.
+    i) list if sequence names, ii) dictionary of sequences, 
+    iii) temp prefix, iv) temp path, v) temp suffix/extension, 
+    vi) verbose
+    Creates a temporary FASTA file with passed sequences.
     Returns path to created temp file."""
    
     with tempfile.NamedTemporaryFile(prefix=prefix_string,suffix=suffix_string,
                                      dir=temp_path,delete=False) as temp:
-        temp.write(b">" + query_name.encode() + b"\n" + fasta_sequence.encode()) 
+        for name in names:
+            temp.write(b">" + name.encode() + b"\n" + seqs[name].encode()) 
         temp.close()
 
     file_path = Path(temp.name)
     if file_path.exists() and file_path.stat().st_size > 0:
         if verbose == True:
-            print(f"# INFO(getTempFASTAFile) created {temp.name}")
+            print(f"# INFO(get_temp_fasta_file) created {temp.name}")
         return temp.name
     else:
-        print("# ERROR(getTempFASTAFile): cannot write temp file")
+        print("# ERROR(get_temp_fasta_file): cannot write temp file")
         return ''
 
 # %%
-def validMatch(gff_file, min_identity, min_coverage, verbose=False):
+def valid_matches(gff_file, min_identity, min_coverage, verbose=False):
     """Checks if GFF3 contains gene & mRNA features with required identity and coverage.
-    Returns: i) Boolean, ii) float ident, iii) float cover"""
+    Assumes 1st match is best, but counts all matches satisfying identity and coverage.
+    Returns dictionary with sequence names as 1ary key and the following 2ary keys:
+    i) matches (int), ii) ident (float), iii) cover (float), iv) gff (string)."""
 
-    gene_match = False
-    gmap_match = False 
-    identity = 0.0
-    coverage = 0.0
+    matches = {}
 
     if not os.path.isfile(gff_file):
-        print(f"# ERROR(validMatch): file {gff_file} does not exist")
-        return gmap_match
+        print(f"# ERROR(valid_matches): file {gff_file} does not exist")
+        return matches
     
     else:
         with open (gff_file) as f:
             for line in f:
                 if not line.startswith('#'):
                     fields = line.split("\t")
-
-                    if fields[2] == "gene":
-                        gene_match = True
-                        continue
+                    attributes = fields[-1].split(";")
+                    seqname = attributes[1].split("=")[1]
                     
                     #gmap-2024-11-20
                     #ID=query.mrna1;Name=name;Parent=genome.path1;Dir=na;coverage=100.0;identity=98.9;
                     #gmap-2013-08-31
                     #ID=chr1start.mrna4;Name=chr1start;Parent=chr1start.path4;coverage=99.5;identity=82.4
-                    elif fields[2] == "mRNA" and gene_match == True:
-                        attributes = fields[-1].split(";")  
-
+                    if fields[2] == "mRNA":
+                        
                         if(attributes[3].startswith("Dir=")):    
                             coverage = float(attributes[4].split("=")[1])
                             identity = float(attributes[5].split("=")[1])   
@@ -151,12 +147,21 @@ def validMatch(gff_file, min_identity, min_coverage, verbose=False):
                             coverage = float(attributes[4].split("=")[1])
 
                         if identity >= min_identity and coverage >= min_coverage:
-                            gmap_match = True
-                            break
+                            if seqname not in matches:
+                                matches[seqname] = {}
+                                matches[seqname]['matches'] = 0
+                                matches[seqname]['ident'] = 0.0
+                                matches[seqname]['cover'] = 0.0
 
-        if verbose == True:                    
-            print(f"# Match = {gmap_match} (ident={identity}, cover={coverage})")                                                                            
-    return gmap_match, identity, coverage
+                            matches[seqname]['matches'] = matches[seqname]['matches'] + 1 
+                            if(matches[seqname]['matches'] == 1):
+                                matches[seqname]['ident'] = identity
+                                matches[seqname]['cover'] = coverage
+                                matches[seqname]['gff'] = line
+                                if verbose == True:                    
+                                    print("#",line)
+
+    return matches
 
 
 # %%
@@ -271,7 +276,7 @@ def checkRangesKeyInRef(reference_gff3,hapIDranges,bed_folder_path,coverage=75.0
 
 
 # %%
-def sortGenomesByRangeNumber(folder_path, hap_table_file, verbose=False):
+def sort_genomes_by_range_number(folder_path, hap_table_file, verbose=False):
     """Sorts the genomes in pangenome folder by number of ranges
     by parsing hap_table_file (max to min). 
     Returns list with genome names, without .fa extension."""
@@ -301,27 +306,57 @@ def sortGenomesByRangeNumber(folder_path, hap_table_file, verbose=False):
     return pangenome_genomes
 
 # %%
-def runGmapAgainstGenomes(pangenome_genomes, gmap_path, gmap_db, fasta_filename, 
+def run_gmap_genomes(pangenome_genomes, gmap_path, gmap_db, fasta_filename, 
                          min_identity, min_coverage,
                          cores=4, prefix='temp', path='/tmp/', verbose=False):
-    """Iteratively gmaps FASTA file against genomes included in pangenome.
-    Returns i) Boolean match, ii) string with matched genome name, iii) path to GFF3 file."""
+    """Iteratively gmaps input FASTA file against list of genomes.
+    Returns dictionary with GMAP matches with sequence names as 1ary keys.
+    For each input sequence the following 2ary keys are created: 
+    i) integer with number of matches,    
+    ii) string with matched genome name, 
+    iii) string with GFF3 of match"""
     
+    gmap_matches = {}
+
+    # parse sequences and init dictionary of matches
+    seqnames, sequences = parse_fasta_file(fasta_filename)
+    for seqname in seqnames:
+        gmap_matches[seqname] = {}        
+        gmap_matches[seqname]['matches'] = 0
+        gmap_matches[seqname]['genome'] = ''
+        gmap_matches[seqname]['gff3'] = ''
+
+    # loop over genomes hierarchically
     for genome in pangenome_genomes:
+    
+        # check which sequences still need to be gmapped
+        g_seqnames = []
+        g_sequences = {}
+        for seqname in seqnames:
+            if gmap_matches[seqname]['matches'] == 0:
+                g_seqnames.append(seqname)
+                g_sequences[seqname] = sequences[seqname]    
 
-        gff_filename = f"{path}/{genome}.{prefix}.gff3"
+        if len(g_seqnames) == 0:
+            if verbose == True:
+                print(f"# INFO(run_gmap_genomes): all sequences already mapped")
+            break
+
+        # create temp FASTA file with sequences to gmap        
+        g_prefix = uuid.uuid4().hex
+        g_fasta_filename = write_temp_fasta_file(g_seqnames, g_sequences, g_prefix, path) 
+
+        g_gff_filename = f"{path}/{genome}.{g_prefix}.gff3"
+        
+        # try default gmap 
+        gmap_command = (
+            f"{gmap_path} -D {gmap_db} -d {genome} -t {cores} {g_fasta_filename} -f gff3_gene > {g_gff_filename}")
+
         if verbose == True:
-            print(f"# Running gmap against {genome}")
-
-        # try dafault gmap 
-        pangenome_gmap_command = (
-            f"{gmap_path} -D {gmap_db} -d {genome} -t {cores} {fasta_filename} -f gff3_gene > {gff_filename}")
-
-        if verbose == True:
-            print(pangenome_gmap_command)
+            print(gmap_command)
 
         try:
-            result = subprocess.run(pangenome_gmap_command, shell=True, check=True, 
+            result = subprocess.run(gmap_command, shell=True, check=True, 
                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             if verbose == True:
                 print(result.stdout.decode())
@@ -337,8 +372,8 @@ def runGmapAgainstGenomes(pangenome_genomes, gmap_path, gmap_db, fasta_filename,
                 if verbose == True:
                     print(f"# Running gmapl for {genome}")
 
-                pangenome_gmap_command = (
-                    f"{gmap_path}l -D {gmap_db} -d {genome} -t {cores} {fasta_filename} -f gff3_gene > {gff_filename}")
+                gmap_command = (
+                    f"{gmap_path}l -D {gmap_db} -d {genome} -t {cores} {g_fasta_filename} -f gff3_gene > {g_gff_filename}")
 
                 try:
                     result = subprocess.run(pangenome_gmap_command, shell=True, check=True, 
@@ -347,18 +382,19 @@ def runGmapAgainstGenomes(pangenome_genomes, gmap_path, gmap_db, fasta_filename,
                         print(result.stdout.decode())
 
                 except subprocess.CalledProcessError as e:
-                    print(f"\nERROR(runGmapAgainsGenomes): '{e.cmd}' returned non-zero exit status {e.returncode}.")
+                    print(f"\nERROR(run_gmap_genomes): '{e.cmd}' returned non-zero exit status {e.returncode}.")
 
             else:    
-                print(f"\nERROR(runGmapAgainsGenomes): '{e.cmd}' returned non-zero exit status {e.returncode}.")
+                print(f"\nERROR(run_gmap_genomes): '{e.cmd}' returned non-zero exit status {e.returncode}.")
             
-        gmap_match, ident, cover = validMatch(gff_filename,min_identity,min_coverage,verbose=verbose)
-        if gmap_match == True:            
-            break
-        else:
-            os.remove(gff_filename)    
+        genome_matches = valid_matches(g_gff_filename,min_identity,min_coverage,verbose=verbose)
+        os.remove(g_gff_filename)
+        for seqname in genome_matches:
+            gmap_matches[seqname]['matches'] = genome_matches[seqname]['matches']
+            gmap_matches[seqname]['genome'] = genome
+            gmap_matches[seqname]['gff3'] = genome_matches[seqname]['gff']
 
-    return gmap_match, genome, gff_filename
+    return gmap_matches
 
 # %%
 def checkRangesKeysInPangenome(gff3,hapIDranges,bedfile,bed_folder_path,coverage=75.0,
@@ -548,14 +584,20 @@ def main():
     #guess this is done from bmap_align_to_graph?
     #parser.add_argument('--show-unmapped', action='store_true', help='Show unmapped sequences in output')
 
-    parser.add_argument('--verb', action='store_true', help='Increase verbosity in output')
-    parser.add_argument('--add_ranges', action='store_true', help='Add all pangenome ranges matching input sequences')
+    parser.add_argument(
+        '--verb', 
+        action='store_true', 
+        help='Increase verbosity in output')
+    
+    parser.add_argument('--add_ranges', 
+        action='store_true', 
+        help='Add all pangenome ranges matching input sequences')
 
     args = parser.parse_args()
 
     fasta_file = args.fasta_file
 
-    # parse pangenome config file
+    # parse YAML pangenome config file
     with open(args.config_file, "r") as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
 
@@ -579,11 +621,14 @@ def main():
 
     ######################################################
 
-    gmap_db_version = checkGmapDBVersion(gmap_db, reference_name)
-    gmap_version = checkGmapVersion(gmap_exe)
+    gmap_db_version = check_gmapdb_version(gmap_db, reference_name)
+    gmap_version = check_gmap_version(gmap_exe)
 
-    print(f"# Gmap version: {gmap_version})")
-    print(f"# Gmap database version: {gmap_db_version} ({reference_name})\n")
+    print(f"# Gmap version: {gmap_version}")
+    if(gmap_db_version != '?'):
+        print(f"# Gmap database version: {gmap_db_version} ({reference_name})\n")
+    else:
+        print(f"# Gmap database version: unknown\n")
 
     print(f"# minimum identity %: {min_identity}")
     print(f"# minimum coverage %: {min_coverage}\n")
@@ -591,85 +636,68 @@ def main():
     if verbose_out == True:
         print(f"# verbose: {verbose_out}")
 
-    # parse input FASTA file and process sequences one by one,
-    # note it would be more efficient to process them in batch to avoid
-    # repeated calls to gmap
-    names, seqs = parseFASTASeqs(fasta_file, verbose=verbose_out)
-    for seqname in names:
+    # match all sequences in one batch
+    pangenome_genomes = sort_genomes_by_range_number(
+        pangenome_fastas_folder, 
+        hapIDtable, 
+        verbose=verbose_out) 
     
-        keys = []
-        matched_coords = ""
-
-        fasta_sequence = seqs[seqname]
-
-        # define prefix for temp & output files out of this query
-        tmp_filename_prefix = uuid.uuid4().hex
-
-        temp_fasta_query = getTempFASTAFile(seqname, fasta_sequence, 
-                                            tmp_filename_prefix, temp_path, 
-                                            verbose=verbose_out)
+    # define prefix for temp & output files out of this query
+    tmp_filename_prefix = uuid.uuid4().hex
+        
+    gmap_matches = run_gmap_genomes(
+        pangenome_genomes, 
+        gmap_exe, gmap_db, 
+        fasta_file, 
+        min_identity, min_coverage,
+        ncores, 
+        tmp_filename_prefix, temp_path,
+        verbose=verbose_out)
     
-        gmap_match, genome, reference_gff = runGmapAgainstGenomes(
-                                               [reference_name], gmap_exe, gmap_db, 
-                                                temp_fasta_query, min_identity, min_coverage,
-                                                ncores, tmp_filename_prefix, temp_path, 
-                                                verbose=verbose_out)
+    
+
+    
                                 
         # MATCH IN REFERENCE, shortcut to avoid pangenome search
-        if gmap_match == True:
-            matched_coords, keys = checkRangesKeyInRef(
-                                            reference_gff, hapIDranges, 
-                                            f'{vcf_dbs}hvcf_files/', coverage=min_coverage,
-                                            bedtools_path=bedtools_exe, grep_path=grep_exe, 
-                                            verbose=verbose_out)
+        #if gmap_match == True:
+        #    matched_coords, keys = checkRangesKeyInRef(
+        #                                    reference_gff, hapIDranges, 
+        #                                    f'{vcf_dbs}hvcf_files/', coverage=min_coverage,
+        #                                    bedtools_path=bedtools_exe, grep_path=grep_exe, 
+        #                                    verbose=verbose_out)
 
             # TODO: match gmap output format
-            print(f"{seqname}\t{matched_coords}")
-            if add_ranges:
-                for key in keys:
-                    print("#",keys[key])
+        #    print(f"{seqname}\t{matched_coords}")
+        #    if add_ranges:
+        #        for key in keys:
+        #            print("#",keys[key])
 
-            if keepTempFiles == False:
-                os.remove(temp_fasta_query)
-                os.remove(reference_gff)
+        #    if keepTempFiles == False:
+        #        os.remove(temp_fasta_query)
+        #        os.remove(reference_gff)
 
         # NO MATCH IN REFERENCE, must scan pangenome hierarchically, slower
-        elif gmap_match == False:
-            if verbose_out == True:
-                print(f"# No match found in reference genome ({reference_name}), look up the pangenome")
+        #elif gmap_match == False:
+        #    if verbose_out == True:
+        #        print(f"# No match found in reference genome ({reference_name}), look up the pangenome")
 
-            pangenome_genomes = sortGenomesByRangeNumber(pangenome_fastas_folder, hapIDtable, verbose=verbose_out)    
         
-            gmap_match, genome, pangenome_gff = runGmapAgainstGenomes(
-                                                pangenome_genomes, gmap_exe, gmap_db, 
-                                                temp_fasta_query, 
-                                                min_identity, min_coverage,
-                                                ncores, tmp_filename_prefix, temp_path,
-                                                verbose=verbose_out)
-
-            if gmap_match == False and verbose_out == True:
-                print("# No matches in pangenome either\n")
+            #if gmap_match == False and verbose_out == True:
+            #    print("# No matches in pangenome either\n")
             
-            else:
-                if verbose_out == True:
-                    print(f"# Match found in {genome}")
+            #else:
+            #    if verbose_out == True:
+            #        print(f"# Match found in {genome}")
 
-            range_bedfile = f"{vcf_dbs}hvcf_files/{genome}.h.bed"    
+            #range_bedfile = f"{vcf_dbs}hvcf_files/{genome}.h.bed"    
 
-            matched_coords, keys = checkRangesKeysInPangenome(
-                                                pangenome_gff,hapIDranges,range_bedfile,
-                                                f'{vcf_dbs}hvcf_files/',coverage=min_coverage,
-                                                bedtools_path=bedtools_exe,grep_path=grep_exe,
-                                                verbose=verbose_out)
+            #matched_coords, keys = checkRangesKeysInPangenome(
+            #                                    pangenome_gff,hapIDranges,range_bedfile,
+            #                                    f'{vcf_dbs}hvcf_files/',coverage=min_coverage,
+            #                                    bedtools_path=bedtools_exe,grep_path=grep_exe,
+            #                                    verbose=verbose_out)
 
-            print(f"{seqname}\t{matched_coords}")
-            if add_ranges:
-                for key in keys:
-                    print("#",keys[key])
-
-            if keepTempFiles == False:
-                os.remove(temp_fasta_query)
-                os.remove(pangenome_gff)
+         
 
 
 # %%
