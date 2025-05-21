@@ -376,7 +376,7 @@ def run_gmap_genomes(pangenome_genomes, gmap_path, gmap_db, fasta_filename,
                     f"{gmap_path}l -D {gmap_db} -d {genome} -t {cores} {g_fasta_filename} -f gff3_gene > {g_gff_filename}")
 
                 try:
-                    result = subprocess.run(pangenome_gmap_command, shell=True, check=True, 
+                    result = subprocess.run(gmap_command, shell=True, check=True, 
                                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                     if verbose == True:
                         print(result.stdout.decode())
