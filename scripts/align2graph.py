@@ -339,8 +339,11 @@ def run_gmap_genomes(pangenome_genomes, gmap_path, gmap_db, fasta_filename,
 
         if len(g_seqnames) == 0:
             if verbose == True:
-                print(f"# INFO(run_gmap_genomes): all sequences already mapped")
+                print(f"# INFO(run_gmap_genomes): all sequences already mapped\n")
             break
+        else:
+            if verbose == True:
+                print(f"\n# INFO(run_gmap_genomes): gmap {len(g_seqnames)} sequences against {genome}")
 
         # create temp FASTA file with sequences to gmap        
         g_prefix = uuid.uuid4().hex
@@ -388,12 +391,15 @@ def run_gmap_genomes(pangenome_genomes, gmap_path, gmap_db, fasta_filename,
                 print(f"\nERROR(run_gmap_genomes): '{e.cmd}' returned non-zero exit status {e.returncode}.")
             
         genome_matches = valid_matches(g_gff_filename,min_identity,min_coverage,verbose=verbose)
-        os.remove(g_gff_filename)
         for seqname in genome_matches:
             gmap_matches[seqname]['matches'] = genome_matches[seqname]['matches']
             gmap_matches[seqname]['genome'] = genome
             gmap_matches[seqname]['gff3'] = genome_matches[seqname]['gff']
 
+        # clean up temp files
+        os.remove(g_gff_filename)
+        os.remove(g_fasta_filename)
+        
     return gmap_matches
 
 # %%
