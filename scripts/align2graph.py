@@ -117,7 +117,13 @@ def valid_matches(gff_file, min_identity, min_coverage, verbose=False):
     """Checks if GFF3 contains gene & mRNA features with required identity and coverage.
     Assumes 1st match is best, but counts all matches satisfying identity and coverage.
     Returns dictionary with sequence names as 1ary key and the following 2ary keys:
-    i) matches (int), ii) ident (float), iii) cover (float), iv) gff (string)."""
+    i) matches (int), 
+    ii) ident (float), 
+    iii) cover (float), 
+    iv) chrom (string),
+    v) start (int),
+    vi) end (int),
+    vii) strand (string)"""
 
     matches = {}
 
@@ -150,14 +156,16 @@ def valid_matches(gff_file, min_identity, min_coverage, verbose=False):
                             if seqname not in matches:
                                 matches[seqname] = {}
                                 matches[seqname]['matches'] = 0
-                                matches[seqname]['ident'] = 0.0
-                                matches[seqname]['cover'] = 0.0
 
                             matches[seqname]['matches'] = matches[seqname]['matches'] + 1 
+
                             if(matches[seqname]['matches'] == 1):
                                 matches[seqname]['ident'] = identity
                                 matches[seqname]['cover'] = coverage
-                                matches[seqname]['gff'] = line
+                                matches[seqname]['chrom'] = fields[0]
+                                matches[seqname]['start'] = int(fields[3])
+                                matches[seqname]['end'] = int(fields[4])
+                                matches[seqname]['strand'] = fields[6]
                                 if verbose == True:                    
                                     print("#",line)
 
@@ -165,7 +173,7 @@ def valid_matches(gff_file, min_identity, min_coverage, verbose=False):
 
 
 # %%
-def checkRangesKeyInRef(reference_gff3,hapIDranges,bed_folder_path,coverage=75.0,
+def get_overlap_ranges_reference(gmap_match,hapIDranges,bed_folder_path,coverage=75.0,
                         bedtools_path='bedtools',grep_path='grep',verbose=False):
     """Retrieves PHG keys for range overlapping gmap match in reference genome.
     Passed coverage is used to intersect ranges and match. Overlap does not consider strandness. 
@@ -177,26 +185,17 @@ def checkRangesKeyInRef(reference_gff3,hapIDranges,bed_folder_path,coverage=75.0
     keys = {}
     match_tsv = ''
     mult_mappings = 'No'    
-    chrom, genome, start, end, strand = '','','','',''
 
-    with open(reference_gff3) as f: 
-        for line in f:  
-            if not line.startswith('#'):
-                fields = line.split("\t")
-                if fields[2] == "gene":
-                    if genome == '':
-                        chrom = fields[0]
-                        genome = fields[1]
-                        start = fields[3]
-                        end = fields[4]
-                        strand = fields[6]
-                    else:
-                        mult_mappings = 'Yes'
-                        break
-    f.close()                
+    chrom = gmap_match['chrom']
+    genome = gmap_match['genome']
+    start = gmap_match['start']
+    end = gmap_match['end']
+    strand = gmap_match['strand']
+    if(gmap_match['matches'] > 1):
+        mult_mappings = 'Yes'
 
     if verbose == True:
-        print(f"# Checking match for {chrom}:{start}-{end} at reference")
+        print(f"# Checking match for {chrom}:{start}-{end} within reference")
 
     # read genome list from hapIDranges
     genomes = []
@@ -210,7 +209,7 @@ def checkRangesKeyInRef(reference_gff3,hapIDranges,bed_folder_path,coverage=75.0
     f.close()
 
     # prepare bedtools intersect command to find overlapping range
-    command = f"{bedtools_path} intersect -a {hapIDranges} -b stdin -nonamecheck -F 0.5"             
+    command = f"{bedtools_path} intersect -a {hapIDranges} -b stdin -nonamecheck -F {coverage/100}"             
 
     # BED-format interval of gmap match
     match_interval = f'{chrom}\t{start}\t{end}'
@@ -223,11 +222,11 @@ def checkRangesKeyInRef(reference_gff3,hapIDranges,bed_folder_path,coverage=75.0
                         
         intersections = result.stdout.splitlines()
         if verbose == True:
-            print(f"# INFO(checkRangesKeyInRef): {result.stdout}")
+            print(f"# INFO(get_overlap_range_reference): {result.stdout}")
 
         if len(intersections) > 1:
             if(verbose == True):
-                print(f"# WARN(checkRangesKeyInRef): more than 1 range overlaps: {intersections}")
+                print(f"# WARN(get_overlap_range_reference): > 1 range overlaps: {intersections}")
             intersections = intersections[0] 
                     
         for feature in intersections:
@@ -247,7 +246,7 @@ def checkRangesKeyInRef(reference_gff3,hapIDranges,bed_folder_path,coverage=75.0
                         keys[clean_k] = genomes[c]
 
     except subprocess.CalledProcessError as e:
-        print(f'# ERROR(checkRangesKeyInRef): {e.cmd} failed: {e.stderr}')
+        print(f'# ERROR(get_overlap_range_reference): {e.cmd} failed: {e.stderr}')
 
     # retrieve genomic ranges matching these keys
     for k in keys:
@@ -263,14 +262,14 @@ def checkRangesKeyInRef(reference_gff3,hapIDranges,bed_folder_path,coverage=75.0
             bed_data = result.stdout.splitlines()
             if len(bed_data) > 1:
                 if(verbose == True):
-                    print(f"# WARN(checkRangesKeyInRef): more than 1 key matches: {result.stdout}")
+                    print(f"# WARN(get_overlap_range_reference): more than 1 key matches: {result.stdout}")
                 bed_data = bed_data[0]
             
             bed_data = bed_data[0].split("\t")
             keys[k] = f'{keys[k]}:{bed_data[0]}:{bed_data[1]}-{bed_data[2]}({bed_data[3]})'
 
         except subprocess.CalledProcessError as e:
-            print(f'# ERROR(checkRangesKeyInRef): {e.cmd} failed: {e.stderr}')
+            print(f'# ERROR(get_overlap_range_reference): {e.cmd} failed: {e.stderr}')
 
     return match_tsv, keys
 
@@ -294,6 +293,9 @@ def sort_genomes_by_range_number(folder_path, hap_table_file, verbose=False):
     hap.close()
     
     # sort genomes and check they are in folder
+    if verbose == True:
+        print("\n# genomes sorted by number of ranges:")
+
     pangenome_genomes = []
     for g in sorted(hapnum, key=hapnum.get, reverse=True):
         if(os.path.isfile(f'{folder_path}/{g}.fa')):
@@ -325,7 +327,7 @@ def run_gmap_genomes(pangenome_genomes, gmap_path, gmap_db, fasta_filename,
         gmap_matches[seqname]['matches'] = 0
         gmap_matches[seqname]['genome'] = ''
         gmap_matches[seqname]['gff3'] = ''
-
+     
     # loop over genomes hierarchically
     for genome in pangenome_genomes:
     
@@ -354,7 +356,6 @@ def run_gmap_genomes(pangenome_genomes, gmap_path, gmap_db, fasta_filename,
         # try default gmap 
         gmap_command = (
             f"{gmap_path} -D {gmap_db} -d {genome} -t {cores} {g_fasta_filename} -f gff3_gene > {g_gff_filename}")
-
         if verbose == True:
             print(gmap_command)
 
@@ -389,12 +390,16 @@ def run_gmap_genomes(pangenome_genomes, gmap_path, gmap_db, fasta_filename,
 
             else:    
                 print(f"\nERROR(run_gmap_genomes): '{e.cmd}' returned non-zero exit status {e.returncode}.")
-            
+
         genome_matches = valid_matches(g_gff_filename,min_identity,min_coverage,verbose=verbose)
+        
         for seqname in genome_matches:
-            gmap_matches[seqname]['matches'] = genome_matches[seqname]['matches']
             gmap_matches[seqname]['genome'] = genome
-            gmap_matches[seqname]['gff3'] = genome_matches[seqname]['gff']
+            gmap_matches[seqname]['matches'] = genome_matches[seqname]['matches']
+            gmap_matches[seqname]['chrom'] = genome_matches[seqname]['chrom']
+            gmap_matches[seqname]['start'] = genome_matches[seqname]['start']
+            gmap_matches[seqname]['end'] = genome_matches[seqname]['end']
+            gmap_matches[seqname]['strand'] = genome_matches[seqname]['strand']
 
         # clean up temp files
         os.remove(g_gff_filename)
@@ -403,7 +408,7 @@ def run_gmap_genomes(pangenome_genomes, gmap_path, gmap_db, fasta_filename,
     return gmap_matches
 
 # %%
-def checkRangesKeysInPangenome(gff3,hapIDranges,bedfile,bed_folder_path,coverage=75.0,
+def get_overlap_ranges_pangenome(gmap_match,hapIDranges,bedfile,bed_folder_path,coverage=75.0,
                                bedtools_path='bedtools',grep_path='grep',verbose=False):
     """Retrieves PHG keys for range overlapping gmap match in 1st matched pangenome assembly.
     BED file is usually a .h.bed file with sorted ranges extracted from PHG .h.vcf.gz files.
@@ -417,23 +422,14 @@ def checkRangesKeysInPangenome(gff3,hapIDranges,bedfile,bed_folder_path,coverage
     match_tsv = ''
     graph_key = ''
     mult_mappings = 'No'
-    chrom, genome, start, end, strand = '','','','',''
-
-    with open(gff3) as f:
-        for line in f:
-            if not line.startswith('#'):
-                fields = line.split("\t")
-                if fields[2] == "gene":
-                    if genome == '':
-                        chrom = fields[0]
-                        genome = fields[1]
-                        start = fields[3]
-                        end = fields[4]
-                        strand = fields[6]
-                    else:
-                        mult_mappings = 'Yes'
-                        break
-    f.close()
+    
+    chrom = gmap_match['chrom']
+    genome = gmap_match['genome']
+    start = gmap_match['start']
+    end = gmap_match['end']
+    strand = gmap_match['strand']
+    if(gmap_match['matches'] > 1):
+        mult_mappings = 'Yes'
 
     if verbose == True:
         print(f"Checking match for {chrom}:{start}-{end} at {bedfile}")
@@ -452,7 +448,7 @@ def checkRangesKeysInPangenome(gff3,hapIDranges,bedfile,bed_folder_path,coverage
     # prepare bedtools intersect command to find overlapping range,
     # bedfile should contain lines like this:
     # chr1H_OX460222.1 1 69 + 9c51... HOR_12184 chr1H_LR890096.1 9 66 21c7...
-    command = f"{bedtools_path} intersect -a {bedfile} -b stdin -nonamecheck -F 0.5"             
+    command = f"{bedtools_path} intersect -a {bedfile} -b stdin -nonamecheck -F {coverage/100}"             
 
     # BED-format interval of gmap match
     match_interval = f'{chrom}\t{start}\t{end}'
@@ -541,7 +537,6 @@ def main():
 
     # hard-coded defaults
     grep_exe = 'grep' # assumed to be available
-    keepTempFiles  = False
 
     parser = argparse.ArgumentParser(
         description="Tool to map sequences in barley pangenome.\n",
@@ -583,8 +578,8 @@ def main():
 
     parser.add_argument(
         "--mincover",
-        default=95.0,
-        help="min%coverage of gmap matches and pangenome ranges, default: 95.0",
+        default=75.0,
+        help="min%coverage of gmap matches and pangenome ranges, default: 75.0",
     )
 
     #guess this is done from bmap_align_to_graph?
@@ -642,66 +637,61 @@ def main():
     if verbose_out == True:
         print(f"# verbose: {verbose_out}")
 
-    # match all sequences in one batch
+    
     pangenome_genomes = sort_genomes_by_range_number(
         pangenome_fastas_folder, 
         hapIDtable, 
         verbose=verbose_out) 
     
-    # define prefix for temp & output files out of this query
-    tmp_filename_prefix = uuid.uuid4().hex
+    # define prefix for temp & output files
+    temp_prefix = uuid.uuid4().hex
         
+    # match all sequences in one batch    
     gmap_matches = run_gmap_genomes(
         pangenome_genomes, 
         gmap_exe, gmap_db, 
         fasta_file, 
         min_identity, min_coverage,
         ncores, 
-        tmp_filename_prefix, temp_path,
+        temp_prefix, temp_path,
         verbose=verbose_out)
     
-    
+    # compute graph coordinates for matched sequences
+    for seqname in gmap_matches:
+        if gmap_matches[seqname]['matches'] > 0:
 
-    
-                                
-        # MATCH IN REFERENCE, shortcut to avoid pangenome search
-        #if gmap_match == True:
-        #    matched_coords, keys = checkRangesKeyInRef(
-        #                                    reference_gff, hapIDranges, 
-        #                                    f'{vcf_dbs}hvcf_files/', coverage=min_coverage,
-        #                                    bedtools_path=bedtools_exe, grep_path=grep_exe, 
-        #                                    verbose=verbose_out)
+            if(gmap_matches[seqname]['genome'] == reference_name):
 
-            # TODO: match gmap output format
-        #    print(f"{seqname}\t{matched_coords}")
-        #    if add_ranges:
-        #        for key in keys:
-        #            print("#",keys[key])
+                matched_coords, keys = get_overlap_ranges_reference(
+                    gmap_matches[seqname], 
+                    hapIDranges, 
+                    f'{vcf_dbs}hvcf_files/', 
+                    coverage=min_coverage,
+                    bedtools_path=bedtools_exe, 
+                    grep_path=grep_exe, 
+                    verbose=verbose_out)
+                
+            else:  
+                matched_coords, keys = get_overlap_ranges_pangenome(
+                    gmap_matches[seqname],
+                    hapIDranges,
+                    f"{vcf_dbs}hvcf_files/{gmap_matches[seqname]['genome']}.h.bed",
+                    f'{vcf_dbs}hvcf_files/',
+                    coverage=min_coverage,
+                    bedtools_path=bedtools_exe,
+                    grep_path=grep_exe,
+                    verbose=verbose_out)
 
-        #    if keepTempFiles == False:
-        #        os.remove(temp_fasta_query)
-        #        os.remove(reference_gff)
+            # print output coordinates    
+            print(f"{seqname}\t{matched_coords}")
+            if add_ranges:
+                for key in keys:
+                    print("#",keys[key])
 
-        # NO MATCH IN REFERENCE, must scan pangenome hierarchically, slower
-        #elif gmap_match == False:
-        #    if verbose_out == True:
-        #        print(f"# No match found in reference genome ({reference_name}), look up the pangenome")
-
-        
-            #if gmap_match == False and verbose_out == True:
-            #    print("# No matches in pangenome either\n")
-            
-            #else:
-            #    if verbose_out == True:
-            #        print(f"# Match found in {genome}")
-
-            #range_bedfile = f"{vcf_dbs}hvcf_files/{genome}.h.bed"    
-
-            #matched_coords, keys = checkRangesKeysInPangenome(
-            #                                    pangenome_gff,hapIDranges,range_bedfile,
-            #                                    f'{vcf_dbs}hvcf_files/',coverage=min_coverage,
-            #                                    bedtools_path=bedtools_exe,grep_path=grep_exe,
-            #                                    verbose=verbose_out)
+    # else: 
+    #     if args.show_unmapped == True:
+    #         for seqname in gmap_matches:
+    #             print(f"# {seqname} not mapped")
 
          
 
