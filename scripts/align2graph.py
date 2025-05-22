@@ -173,7 +173,7 @@ def valid_matches(gff_file, min_identity, min_coverage, verbose=False):
 
 
 # %%
-def get_overlap_ranges_reference(gmap_match,hapIDranges,bed_folder_path,coverage=75.0,
+def get_overlap_ranges_reference(gmap_match,hapIDranges,bed_folder_path,coverage=0.75,
                         bedtools_path='bedtools',grep_path='grep',verbose=False):
     """Retrieves PHG keys for range overlapping gmap match in reference genome.
     Passed coverage is used to intersect ranges and match. Overlap does not consider strandness. 
@@ -209,7 +209,7 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,bed_folder_path,coverage
     f.close()
 
     # prepare bedtools intersect command to find overlapping range
-    command = f"{bedtools_path} intersect -a {hapIDranges} -b stdin -nonamecheck -F {coverage/100}"             
+    command = f"{bedtools_path} intersect -a {hapIDranges} -b stdin -nonamecheck -e -F {coverage} -f {coverage}"             
 
     # BED-format interval of gmap match
     match_interval = f'{chrom}\t{start}\t{end}'
@@ -222,11 +222,11 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,bed_folder_path,coverage
                         
         intersections = result.stdout.splitlines()
         if verbose == True:
-            print(f"# INFO(get_overlap_range_reference): {result.stdout}")
+            print(f"# INFO(get_overlap_ranges_reference): {result.stdout}")
 
         if len(intersections) > 1:
             if(verbose == True):
-                print(f"# WARN(get_overlap_range_reference): > 1 range overlaps: {intersections}")
+                print(f"# WARN(get_overlap_ranges_reference): > 1 range overlaps: {intersections}")
             intersections = intersections[0] 
                     
         for feature in intersections:
@@ -246,7 +246,7 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,bed_folder_path,coverage
                         keys[clean_k] = genomes[c]
 
     except subprocess.CalledProcessError as e:
-        print(f'# ERROR(get_overlap_range_reference): {e.cmd} failed: {e.stderr}')
+        print(f'# ERROR(get_overlap_ranges_reference): {e.cmd} failed: {e.stderr}')
 
     # retrieve genomic ranges matching these keys
     for k in keys:
@@ -262,14 +262,14 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,bed_folder_path,coverage
             bed_data = result.stdout.splitlines()
             if len(bed_data) > 1:
                 if(verbose == True):
-                    print(f"# WARN(get_overlap_range_reference): more than 1 key matches: {result.stdout}")
+                    print(f"# WARN(get_overlap_range_references): more than 1 key matches: {result.stdout}")
                 bed_data = bed_data[0]
             
             bed_data = bed_data[0].split("\t")
             keys[k] = f'{keys[k]}:{bed_data[0]}:{bed_data[1]}-{bed_data[2]}({bed_data[3]})'
 
         except subprocess.CalledProcessError as e:
-            print(f'# ERROR(get_overlap_range_reference): {e.cmd} failed: {e.stderr}')
+            print(f'# ERROR(get_overlap_ranges_reference): {e.cmd} failed: {e.stderr}')
 
     return match_tsv, keys
 
@@ -408,7 +408,7 @@ def run_gmap_genomes(pangenome_genomes, gmap_path, gmap_db, fasta_filename,
     return gmap_matches
 
 # %%
-def get_overlap_ranges_pangenome(gmap_match,hapIDranges,bedfile,bed_folder_path,coverage=75.0,
+def get_overlap_ranges_pangenome(gmap_match,hapIDranges,bedfile,bed_folder_path,coverage=0.75,
                                bedtools_path='bedtools',grep_path='grep',verbose=False):
     """Retrieves PHG keys for range overlapping gmap match in 1st matched pangenome assembly.
     BED file is usually a .h.bed file with sorted ranges extracted from PHG .h.vcf.gz files.
@@ -448,7 +448,7 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,bedfile,bed_folder_path,
     # prepare bedtools intersect command to find overlapping range,
     # bedfile should contain lines like this:
     # chr1H_OX460222.1 1 69 + 9c51... HOR_12184 chr1H_LR890096.1 9 66 21c7...
-    command = f"{bedtools_path} intersect -a {bedfile} -b stdin -nonamecheck -F {coverage/100}"             
+    command = f"{bedtools_path} intersect -a {bedfile} -b stdin -nonamecheck -e -F {coverage} -f {coverage}"             
 
     # BED-format interval of gmap match
     match_interval = f'{chrom}\t{start}\t{end}'
@@ -461,11 +461,11 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,bedfile,bed_folder_path,
                         
         intersections = result.stdout.splitlines()
         if verbose == True:
-            print(f"# INFO(checkRangesKeyInPangenome): {result.stdout}")
+            print(f"# INFO(get_overlap_ranges_pangenome): {result.stdout}")
 
         if len(intersections) > 1:
             if(verbose == True):
-                print(f"# WARN(checkRangesKeyInPangenome): more than 1 range overlaps: {intersections}")
+                print(f"# WARN(get_overlap_ranges_pangenome): > 1 range overlaps: {intersections}")
             intersections = intersections[0] 
                     
         for feature in intersections:
@@ -486,7 +486,7 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,bedfile,bed_folder_path,
             graph_data = result.stdout.splitlines()
             if len(graph_data) > 1:
                 if(verbose == True):
-                    print(f"# WARN(checkRangesKeyInPangenome): more than 1 graph matches: {result.stdout}")
+                    print(f"# WARN(get_overlap_ranges_pangenome): more than 1 graph matches: {result.stdout}")
                 graph_data = graph_data[0]
  
             feature = graph_data[0].split("\t")
@@ -501,10 +501,10 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,bedfile,bed_folder_path,
                         keys[clean_k] = genomes[c]
 
         except subprocess.CalledProcessError as e:
-            print(f'# ERROR(checkRangesKeyInPangenome): {e.cmd} failed: {e.stderr}')
+            print(f'# ERROR(get_overlap_ranges_pangenome): {e.cmd} failed: {e.stderr}')
                             
     except subprocess.CalledProcessError as e:
-        print(f'ERROR(checkRangesKeyInPangenome): {e.cmd} failed: {e.stderr}')
+        print(f'ERROR(get_overlap_ranges_pangenome): {e.cmd} failed: {e.stderr}')
 
     # retrieve genomic ranges matching these keys
     for k in keys:
@@ -519,14 +519,14 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,bedfile,bed_folder_path,
             bed_data = result.stdout.splitlines()
             if len(bed_data) > 1:
                 if(verbose == True):
-                    print(f"# WARN(checkRangesKeyInPangenome): more than 1 key matches: {result.stdout}")
+                    print(f"# WARN(get_overlap_ranges_pangenome): more than 1 key matches: {result.stdout}")
                 bed_data = bed_data[0]
 
             bed_data = bed_data[0].split("\t")
             keys[k] = f'{keys[k]}:{bed_data[0]}:{bed_data[1]}-{bed_data[2]}({bed_data[3]})'
 
         except subprocess.CalledProcessError as e:
-            print(f'# ERROR(checkRangesKeyInPangenome): {e.cmd} failed: {e.stderr}')
+            print(f'# ERROR(get_overlap_ranges_pangenome): {e.cmd} failed: {e.stderr}')
 
     return match_tsv, keys
 
@@ -578,6 +578,12 @@ def main():
 
     parser.add_argument(
         "--mincover",
+        default=95.0,
+        help="min%coverage of gmap matches, default: 95.0",
+    )
+
+    parser.add_argument(
+        "--mincover_range",
         default=75.0,
         help="min%coverage of gmap matches and pangenome ranges, default: 75.0",
     )
@@ -612,9 +618,10 @@ def main():
 
     # get optional params
     bedtools_exe = args.bedtools_exe
-    ncores       = args.cor
-    min_identity = args.minident
-    min_coverage = args.mincover
+    ncores       = int(args.cor)
+    min_identity = float(args.minident)
+    min_coverage = float(args.mincover)
+    min_coverage_range = float(args.mincover_range)
     temp_path    = args.tmp_path
     verbose_out  = args.verb
     add_ranges   = args.add_ranges
@@ -632,11 +639,11 @@ def main():
         print(f"# Gmap database version: unknown\n")
 
     print(f"# minimum identity %: {min_identity}")
-    print(f"# minimum coverage %: {min_coverage}\n")
+    print(f"# minimum coverage %: {min_coverage}")
+    print(f"# minimum coverage range %: {min_coverage_range}\n")
 
     if verbose_out == True:
         print(f"# verbose: {verbose_out}")
-
     
     pangenome_genomes = sort_genomes_by_range_number(
         pangenome_fastas_folder, 
@@ -666,7 +673,7 @@ def main():
                     gmap_matches[seqname], 
                     hapIDranges, 
                     f'{vcf_dbs}hvcf_files/', 
-                    coverage=min_coverage,
+                    coverage=min_coverage_range/100,
                     bedtools_path=bedtools_exe, 
                     grep_path=grep_exe, 
                     verbose=verbose_out)
@@ -677,7 +684,7 @@ def main():
                     hapIDranges,
                     f"{vcf_dbs}hvcf_files/{gmap_matches[seqname]['genome']}.h.bed",
                     f'{vcf_dbs}hvcf_files/',
-                    coverage=min_coverage,
+                    coverage=min_coverage_range/100,
                     bedtools_path=bedtools_exe,
                     grep_path=grep_exe,
                     verbose=verbose_out)
