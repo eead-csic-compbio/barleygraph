@@ -186,7 +186,8 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,bed_folder_path,
 
     keys = {}
     match_tsv = ''
-    mult_mappings = 'No'    
+    mult_mappings = 'No'
+    all_ranges = '.'
 
     chrom = gmap_match['chrom']
     genome = gmap_match['genome']
@@ -238,14 +239,15 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,bed_folder_path,
                 f'{feature[0]}\t{feature[1]}\t{feature[2]}\t{strand}\t{mult_mappings}'
                 f'\t{genome}\t{feature[0]}\t{feature[1]}\t{feature[2]}\t{strand}\t')
             
-            for c in range(0,len(genomes)):
-                k = feature[c+3]
-                if k == ".":
-                    continue
-                else:
-                    clean_k = k[1:-1] #remove <>
-                    if clean_k not in keys:
-                        keys[clean_k] = genomes[c]
+            if all_graph_matches == True:
+                for c in range(0,len(genomes)):
+                    k = feature[c+3]
+                    if k == ".":
+                        continue
+                    else:
+                        clean_k = k[1:-1] #remove <>
+                        if clean_k not in keys:
+                            keys[clean_k] = genomes[c]
 
     except subprocess.CalledProcessError as e:
         print(f'# ERROR(get_overlap_ranges_reference): {e.cmd} failed: {e.stderr}')
@@ -272,9 +274,9 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,bed_folder_path,
 
             except subprocess.CalledProcessError as e:
                 print(f'# ERROR(get_overlap_ranges_reference): {e.cmd} failed: {e.stderr}')
-        
+        all_ranges = ";".join(sorted(keys.values()))
 
-    return match_tsv + ";".join(sorted(keys.values()))
+    return match_tsv + all_ranges
 
 
 # %%
@@ -427,6 +429,7 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,bedfile,bed_folder_path,
     match_tsv = ''
     graph_key = ''
     mult_mappings = 'No'
+    all_ranges = '.'
     
     chrom = gmap_match['chrom']
     genome = gmap_match['genome']
@@ -482,31 +485,32 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,bedfile,bed_folder_path,
             graph_key = feature[4]
             
         # look for this key within graph ranges (grep)
-        command = f"{grep_path} {graph_key} {hapIDranges}"
-        try:
-            result = subprocess.run(command,
+        if all_graph_matches == True:
+            command = f"{grep_path} {graph_key} {hapIDranges}"
+            try:
+                result = subprocess.run(command,
                                 shell=True,check=True,text=True,input=match_interval,
                                 stdout=subprocess.PIPE,stderr=subprocess.PIPE)
 
-            graph_data = result.stdout.splitlines()
-            if len(graph_data) > 1:
-                if(verbose == True):
-                    print(f"# WARN(get_overlap_ranges_pangenome): more than 1 graph matches: {result.stdout}")
-                graph_data = graph_data[0]
+                graph_data = result.stdout.splitlines()
+                if len(graph_data) > 1:
+                    if(verbose == True):
+                        print(f"# WARN(get_overlap_ranges_pangenome): more than 1 graph matches: {result.stdout}")
+                    graph_data = graph_data[0]
  
-            feature = graph_data[0].split("\t")
-            feature[-1] = feature[-1].strip()
-            for c in range(0,len(genomes)):
-                k = feature[c+3]
-                if k == ".":
-                    continue
-                else:
-                    clean_k = k[1:-1] #remove <>
-                    if clean_k not in keys:
-                        keys[clean_k] = genomes[c]
+                feature = graph_data[0].split("\t")
+                feature[-1] = feature[-1].strip()
+                for c in range(0,len(genomes)):
+                    k = feature[c+3]
+                    if k == ".":
+                        continue
+                    else:
+                        clean_k = k[1:-1] #remove <>
+                        if clean_k not in keys:
+                            keys[clean_k] = genomes[c]
 
-        except subprocess.CalledProcessError as e:
-            print(f'# ERROR(get_overlap_ranges_pangenome): {e.cmd} failed: {e.stderr}')
+            except subprocess.CalledProcessError as e:
+                print(f'# ERROR(get_overlap_ranges_pangenome): {e.cmd} failed: {e.stderr}')
                             
     except subprocess.CalledProcessError as e:
         print(f'ERROR(get_overlap_ranges_pangenome): {e.cmd} failed: {e.stderr}')
@@ -532,8 +536,10 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,bedfile,bed_folder_path,
 
             except subprocess.CalledProcessError as e:
                 print(f'# ERROR(get_overlap_ranges_pangenome): {e.cmd} failed: {e.stderr}')
+        
+        all_ranges = ";".join(sorted(keys.values()))
 
-    return match_tsv + ";".join(sorted(keys.values()))
+    return match_tsv + all_ranges
 
 
 # %%
