@@ -8,6 +8,11 @@
 # J Sarria, B Contreras-Moreira
 # Copyright [2024-25] Estacion Experimental de Aula Dei-CSIC
 
+# example calls:
+# ./align2graph.py Med11.yaml test.fna
+# ./align2graph.py --add_ranges Med11.yaml test.fna
+# ./align2graph.py --verb --add_ranges Med11.yaml test.fna
+
 # %%
 def parse_fasta_file(fasta, verbose=False):
     """Takes a FASTA filename and parses sequence names before 1st space.
@@ -658,6 +663,7 @@ def main():
     else:
         print(f"# Gmap database version: unknown\n")
 
+    print(f"# config_file: {args.config_file}")
     print(f"# minimum identity %: {min_identity}")
     print(f"# minimum coverage %: {min_coverage}")
     print(f"# minimum coverage range %: {min_coverage_range}\n")
