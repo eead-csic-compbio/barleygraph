@@ -682,6 +682,11 @@ def main():
         temp_prefix, temp_path,
         verbose=verbose_out)
     
+
+    # print header
+    print(f'sequence\tchr\t\tstart\tend\t\tstrand\tmult_mappings\tgenome\t'
+          'graph_chr\tgraph_start\tgraph_end\tgraph_strand\tgraph_ranges')
+    
     # compute graph coordinates for matched sequences
     for seqname in gmap_matches:
         if gmap_matches[seqname]['matches'] > 0:
