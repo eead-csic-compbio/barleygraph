@@ -367,7 +367,7 @@ def run_gmap_genomes(pangenome_genomes, gmap_path, gmap_db, fasta_filename,
         gmap_command = (
             f"{gmap_path} -D {gmap_db} -d {genome} -t {cores} {g_fasta_filename} -f gff3_gene > {g_gff_filename}")
         if verbose == True:
-            print(gmap_command)
+            print(f'# {gmap_command}')
 
         try:
             result = subprocess.run(gmap_command, shell=True, check=True, 
@@ -477,7 +477,7 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,bedfile,bed_folder_path,
 
 
         if(len(intersections) == 0):
-            match_tsv = f'{chrom}\t{start}\t{end}\t.\t{mult_mappings}\t{genome}\t.\t.\t.\t.\t'
+            match_tsv = f'.\t.\t.\t.\t.\t{genome}\t{chrom}\t{start}\t{end}\t{strand}\t'
             return match_tsv + all_ranges
 
         elif len(intersections) > 1:
