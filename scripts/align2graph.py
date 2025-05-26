@@ -180,7 +180,7 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,bed_folder_path,
     """Retrieves PHG keys for ranges overlapping gmap match in reference genome.
     Passed coverage is used to intersect ranges and match. Overlap does not consider strandness. 
     Returns: i) string with matched coords in TSV format.
-    Column order in TSV: graph_chr, graph_start, graph_end, graph_strand (. if absent in ref), 
+    Column order in TSV: ref_chr, ref_start, ref_end, ref_strand (. if absent in ref), 
     multiple_mappings (Yes/No), match_genome, match_chr, match_start, match_end, match_strand, other_matches"""
 
     keys = {}
@@ -426,7 +426,7 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,bedfile,bed_folder_path,
     BED file is usually a .h.bed file with sorted ranges extracted from PHG .h.vcf.gz files.
     Passed coverage is used to intersect ranges and match. Overlap does not consider strandness.
     Returns: string with matched coords in TSV format.
-    Column order in TSV: graph_chr, graph_start, graph_end, graph_strand (. if absent in ref),
+    Column order in TSV: ref_chr, ref_start, ref_end, ref_strand (. if absent in ref),
     multiple_mappings (Yes/No), match_genome, match_chr, match_start, match_end, match_strand, other_matches"""
 
     keys = {}
