@@ -179,8 +179,7 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,bed_folder_path,
                                 verbose=False):
     """Retrieves PHG keys for ranges overlapping gmap match in reference genome.
     Passed coverage is used to intersect ranges and match. Overlap does not consider strandness. 
-    Returns: i) string with matched coords in TSV format, ii) dictionary of keys/genomic ranges
-    of all matched genomes (useful to compute alignments down the road).
+    Returns: i) string with matched coords in TSV format.
     Column order in TSV: graph_chr, graph_start, graph_end, graph_strand (. if absent in ref), 
     multiple_mappings (Yes/No), match_genome, match_chr, match_start, match_end, match_strand, other_matches"""
 
@@ -256,7 +255,8 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,bed_folder_path,
     except subprocess.CalledProcessError as e:
         print(f'# ERROR(get_overlap_ranges_reference): {e.cmd} failed: {e.stderr}')
 
-    # retrieve genomic ranges matching these keys
+    # retrieve genomic ranges matching these keys,
+    # multiple matches allowed tu support 1toN mappings (CNVs)
     if all_graph_matches == True:
         for k in keys:
             range_bedfile = f"{bed_folder_path}/{keys[k]}.h.bed"
@@ -267,14 +267,15 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,bed_folder_path,
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE)
 
-                bed_data = result.stdout.splitlines()
-                if len(bed_data) > 1:
-                    bed_data = bed_data[:1]
-                    if(verbose == True):
-                        print(f"# WARN(get_overlap_range_references): several key matches, take 1st: {result.stdout}")
-                    
-                bed_data = bed_data[0].split("\t")
-                keys[k] = f'{keys[k]}:{bed_data[0]}:{bed_data[1]}-{bed_data[2]}({bed_data[3]})'
+                num_bed_lines = 0
+                for b in result.stdout.splitlines():
+                    bed_data = b.split("\t")
+                    if len(bed_data) > 4:
+                        if num_bed_lines == 0:
+                            keys[k] = f'[{keys[k]}]{bed_data[0]}:{bed_data[1]}-{bed_data[2]}({bed_data[3]})'
+                        else:
+                            keys[k] += f',{bed_data[0]}:{bed_data[1]}-{bed_data[2]}({bed_data[3]})'
+                    num_bed_lines += 1
 
             except subprocess.CalledProcessError as e:
                 print(f'# ERROR(get_overlap_ranges_reference): {e.cmd} failed: {e.stderr}')
@@ -424,8 +425,7 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,bedfile,bed_folder_path,
     """Retrieves PHG keys for ranges overlapping gmap match in 1st matched pangenome assembly.
     BED file is usually a .h.bed file with sorted ranges extracted from PHG .h.vcf.gz files.
     Passed coverage is used to intersect ranges and match. Overlap does not consider strandness.
-    Returns: i) string with matched coords in TSV format, ii) dictionary of keys/genomic ranges
-    of all matched genomes (useful to compute alignments down the road).
+    Returns: string with matched coords in TSV format.
     Column order in TSV: graph_chr, graph_start, graph_end, graph_strand (. if absent in ref),
     multiple_mappings (Yes/No), match_genome, match_chr, match_start, match_end, match_strand, other_matches"""
 
@@ -444,7 +444,7 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,bedfile,bed_folder_path,
         mult_mappings = 'Yes'
 
     if verbose == True:
-        print(f"Checking match for {chrom}:{start}-{end} at {bedfile}")
+        print(f"# Checking match for {chrom}:{start}-{end} at {bedfile}")
 
     # read genome list from hapIDranges
     genomes = []
@@ -534,14 +534,15 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,bedfile,bed_folder_path,
                                 shell=True,check=True,text=True,input=match_interval,
                                 stdout=subprocess.PIPE,stderr=subprocess.PIPE)
 
-                bed_data = result.stdout.splitlines()
-                if len(bed_data) > 1:
-                    bed_data = bed_data[:1]
-                    if(verbose == True):
-                        print(f"# WARN(get_overlap_ranges_pangenome): several key matches, take 1st: {result.stdout}")
-                    
-                bed_data = bed_data[0].split("\t")
-                keys[k] = f'{keys[k]}:{bed_data[0]}:{bed_data[1]}-{bed_data[2]}({bed_data[3]})'
+                num_bed_lines = 0
+                for b in result.stdout.splitlines():
+                    bed_data = b.split("\t")
+                    if len(bed_data) > 4:
+                        if num_bed_lines == 0:
+                            keys[k] = f'[{keys[k]}]{bed_data[1]}-{bed_data[2]}({bed_data[3]})'
+                        else:
+                            keys[k] += f',{bed_data[0]}:{bed_data[1]}-{bed_data[2]}({bed_data[3]})'
+                    num_bed_lines += 1
 
             except subprocess.CalledProcessError as e:
                 print(f'# ERROR(get_overlap_ranges_pangenome): {e.cmd} failed: {e.stderr}')
@@ -684,8 +685,8 @@ def main():
     
 
     # print header
-    print(f'sequence\tchr\t\tstart\tend\t\tstrand\tmult_mappings\tgenome\t'
-          'graph_chr\tgraph_start\tgraph_end\tgraph_strand\tgraph_ranges')
+    print(f'#query\tref_chr\t\tref_start\tref_end\t\tref_strand\tmult_mappings\tgenome\t'
+          'chr\tstart\tend\tstrand\tgraph_ranges')
     
     # compute graph coordinates for matched sequences
     for seqname in gmap_matches:
