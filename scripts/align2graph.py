@@ -227,11 +227,15 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,bed_folder_path,
         if verbose == True:
             print(f"# INFO(get_overlap_ranges_reference): {result.stdout}")
 
-        if len(intersections) > 1:
+        if(len(intersections) == 0):
+            match_tsv = f'{chrom}\t{start}\t{end}\t.\t{mult_mappings}\t{genome}\t.\t.\t.\t.\t'
+            return match_tsv + all_ranges
+
+        elif len(intersections) > 1:
             if(verbose == True):
                 print(f"# WARN(get_overlap_ranges_reference): several overlaps, take 1st: {intersections}")
             intersections = intersections[:1]
-                    
+
         for feature in intersections:
             feature = str(feature).split("\t")
             feature[-1] = feature[-1].strip() 
@@ -471,7 +475,12 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,bedfile,bed_folder_path,
         if verbose == True:
             print(f"# INFO(get_overlap_ranges_pangenome): {result.stdout}")
 
-        if len(intersections) > 1:
+
+        if(len(intersections) == 0):
+            match_tsv = f'{chrom}\t{start}\t{end}\t.\t{mult_mappings}\t{genome}\t.\t.\t.\t.\t'
+            return match_tsv + all_ranges
+
+        elif len(intersections) > 1:
             if(verbose == True):
                 print(f"# WARN(get_overlap_ranges_pangenome): > several overlaps, take 1st: {intersections}")
             intersections = intersections[:1]
@@ -483,10 +492,6 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,bedfile,bed_folder_path,
                 f'{feature[6]}\t{feature[7]}\t{feature[8]}\t.\t{mult_mappings}'
                 f'\t{genome}\t{feature[0]}\t{feature[1]}\t{feature[2]}\t{feature[3]}\t')
             graph_key = feature[4]
-
-        if(graph_key == ''):
-            match_tsv = f'{chrom}\t{start}\t{end}\t.\t{mult_mappings}\t{genome}\t.\t.\t.\t.\t'
-            return match_tsv + all_ranges
 
         # look for this key within graph ranges (grep)
         if all_graph_matches == True:
