@@ -313,7 +313,7 @@ def sort_genomes_by_range_number(folder_path, hap_table_file, verbose=False):
 
     pangenome_genomes = []
     for g in sorted(hapnum, key=hapnum.get, reverse=True):
-        if(os.path.isfile(f'{folder_path}/{g}.fa')):
+        if(os.path.isfile(f'{folder_path}/{g}.fa') or os.path.isfile(f'{folder_path}/{g}.fa.gz')):
             pangenome_genomes.append(g)
             if verbose == True:
                 print(f'# {g} {hapnum[g]}')
