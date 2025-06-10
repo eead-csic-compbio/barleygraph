@@ -495,7 +495,7 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,bedfile,bed_folder_path,
             feature[-1] = feature[-1].replace("\n", "") 
             match_tsv = ( # strand unknown as match is missing from reference genome
                 f'{feature[6]}\t{feature[7]}\t{feature[8]}\t.\t{mult_mappings}'
-                f'\t{genome}\t{feature[0]}\t{feature[1]}\t{feature[2]}\t{feature[3]}\t')
+                f'\t{genome}\t{chrom}\t{start}\t{end}\t{strand}\t')
             graph_key = feature[4]
 
         # look for this key within graph ranges (grep)
@@ -692,7 +692,7 @@ def main():
 
     # print header
     print(f'#query\tref_chr\t\tref_start\tref_end\t\tref_strand\tmult_mappings\tgenome\t'
-          'chr\tstart\tend\tstrand\tgraph_ranges')
+          'chr\tstart\tend\tstrand\tperc_ident\tperc_cover\tgraph_ranges')
     
     # compute graph coordinates for matched sequences
     for seqname in gmap_matches:
