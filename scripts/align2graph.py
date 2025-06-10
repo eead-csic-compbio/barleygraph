@@ -638,6 +638,7 @@ def main():
     fasta_file = args.fasta_file
 
     # parse YAML pangenome config file
+    chr_syns = {}
     with open(args.config_file, "r") as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
 
@@ -649,6 +650,11 @@ def main():
         hapIDranges = config['hapIDranges']
         gmap_exe = config['gmap_exe']
 
+        if 'chr_syns' in config:
+            # if chr_syns is present, it is a dictionary with chromosome synonyms
+            # e.g. {'chr1H': 'chr1H_LR890096.1', 'chr2H': 'chr2H_LR890097.1', ...}
+            chr_syns = config['chr_syns']
+
     # get optional params
     bedtools_exe = args.bedtools_exe
     ncores       = int(args.cor)
@@ -658,7 +664,6 @@ def main():
     temp_path    = args.tmp_path
     verbose_out  = args.verb
     add_ranges   = args.add_ranges
-
 
     ######################################################
 
@@ -730,13 +735,17 @@ def main():
                     grep_path=grep_exe,
                     verbose=verbose_out)
 
-            # print output coordinates    
-            print(f"{seqname}\t{matched_coords}")
+            # print output coordinates and update chr names if needed
+            outTSV = matched_coords.split("\t")
+            matched_coords = "\t".join(outTSV[1:])
 
-    # else: 
-    #     if args.show_unmapped == True:
-    #         for seqname in gmap_matches:
-    #             print(f"# {seqname} not mapped")
+            if outTSV[0] in chr_syns:
+                ref_chr = chr_syns[outTSV[0]]
+            else:
+                ref_chr = outTSV[0]
+
+            print(f"{seqname}\t{ref_chr}\t{matched_coords}")
+
 
          
 
