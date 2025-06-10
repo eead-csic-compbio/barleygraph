@@ -184,9 +184,10 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,bed_folder_path,
                                 verbose=False):
     """Retrieves PHG keys for ranges overlapping gmap match in reference genome.
     Passed coverage is used to intersect ranges and match. Overlap does not consider strandness. 
-    Returns: i) string with matched coords in TSV format.
+    Returns: string with matched coords in TSV format.
     Column order in TSV: ref_chr, ref_start, ref_end, ref_strand (. if absent in ref), 
-    multiple_mappings (Yes/No), match_genome, match_chr, match_start, match_end, match_strand, other_matches"""
+    match_genome, match_chr, match_start, match_end, match_strand, 
+    match_identity,match_coverage,other_matches (Yes/No),graph_ranges."""
 
     keys = {}
     match_tsv = ''
@@ -198,6 +199,8 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,bed_folder_path,
     start = gmap_match['start']
     end = gmap_match['end']
     strand = gmap_match['strand']
+    ident = gmap_match['ident']
+    cover = gmap_match['cover']
     if(gmap_match['matches'] > 1):
         mult_mappings = 'Yes'
 
@@ -215,7 +218,7 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,bed_folder_path,
                 break
     f.close()
 
-    # prepare bedtools intersect command to find overlapping range
+    # prepare bedtools intersect command to find overlapping range, no strand check
     command = f"{bedtools_path} intersect -a {hapIDranges} -b stdin -nonamecheck -e -F {coverage} -f {coverage}"             
 
     # BED-format interval of gmap match
@@ -232,7 +235,7 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,bed_folder_path,
             print(f"# INFO(get_overlap_ranges_reference): {result.stdout}")
 
         if(len(intersections) == 0):
-            match_tsv = f'{chrom}\t{start}\t{end}\t.\t{mult_mappings}\t{genome}\t.\t.\t.\t.\t'
+            match_tsv = f'.\t.\t.\t.\t{genome}\t{chrom}\t{start}\t{end}\t{strand}\t{ident}\t{cover}\t{mult_mappings}\t'
             return match_tsv + all_ranges
 
         elif len(intersections) > 1:
@@ -244,8 +247,8 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,bed_folder_path,
             feature = str(feature).split("\t")
             feature[-1] = feature[-1].strip() 
             match_tsv = (
-                f'{feature[0]}\t{feature[1]}\t{feature[2]}\t{strand}\t{mult_mappings}'
-                f'\t{genome}\t{feature[0]}\t{feature[1]}\t{feature[2]}\t{strand}\t')
+                f'{feature[0]}\t{feature[1]}\t{feature[2]}\t{strand}\t'
+                f'{genome}\t{chrom}\t{start}\t{end}\t{strand}\t{ident}\t{cover}\t{mult_mappings}\t')
             
             if all_graph_matches == True:
                 for c in range(0,len(genomes)):
@@ -329,10 +332,11 @@ def run_gmap_genomes(pangenome_genomes, gmap_path, gmap_db, fasta_filename,
     """Iteratively gmaps input FASTA file against list of genomes.
     Returns dictionary with GMAP matches with sequence names as 1ary keys.
     For each input sequence the following 2ary keys are created: 
-    i) integer with number of matches,    
-    ii) string with matched genome name, 
-    iii) string with GFF3 of match"""
-    
+    i) integer with number of matches (default 0),    
+    ii) string with matched genome name (default ''), 
+    iii to viii) strings with chromosome, start, end, strand, identity, cover
+    """
+
     gmap_matches = {}
 
     # parse sequences and init dictionary of matches
@@ -341,7 +345,6 @@ def run_gmap_genomes(pangenome_genomes, gmap_path, gmap_db, fasta_filename,
         gmap_matches[seqname] = {}        
         gmap_matches[seqname]['matches'] = 0
         gmap_matches[seqname]['genome'] = ''
-        gmap_matches[seqname]['gff3'] = ''
      
     # loop over genomes hierarchically
     for genome in pangenome_genomes:
@@ -415,6 +418,8 @@ def run_gmap_genomes(pangenome_genomes, gmap_path, gmap_db, fasta_filename,
             gmap_matches[seqname]['start'] = genome_matches[seqname]['start']
             gmap_matches[seqname]['end'] = genome_matches[seqname]['end']
             gmap_matches[seqname]['strand'] = genome_matches[seqname]['strand']
+            gmap_matches[seqname]['ident'] = genome_matches[seqname]['ident']
+            gmap_matches[seqname]['cover'] = genome_matches[seqname]['cover']
 
         # clean up temp files
         os.remove(g_gff_filename)
@@ -431,8 +436,9 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,bedfile,bed_folder_path,
     BED file is usually a .h.bed file with sorted ranges extracted from PHG .h.vcf.gz files.
     Passed coverage is used to intersect ranges and match. Overlap does not consider strandness.
     Returns: string with matched coords in TSV format.
-    Column order in TSV: ref_chr, ref_start, ref_end, ref_strand (. if absent in ref),
-    multiple_mappings (Yes/No), match_genome, match_chr, match_start, match_end, match_strand, other_matches"""
+    Column order in TSV: ref_chr, ref_start, ref_end, ref_strand (. if absent in ref), 
+    match_genome, match_chr, match_start, match_end, match_strand, 
+    match_identity,match_coverage,other_matches (Yes/No),graph_ranges."""
 
     keys = {}
     match_tsv = ''
@@ -445,6 +451,8 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,bedfile,bed_folder_path,
     start = gmap_match['start']
     end = gmap_match['end']
     strand = gmap_match['strand']
+    ident = gmap_match['ident']
+    cover = gmap_match['cover']
     if(gmap_match['matches'] > 1):
         mult_mappings = 'Yes'
 
@@ -462,7 +470,7 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,bedfile,bed_folder_path,
                 break
     f.close()
 
-    # prepare bedtools intersect command to find overlapping range,
+    # prepare bedtools intersect command to find overlapping range, no strand check,
     # bedfile should contain lines like this:
     # chr1H_OX460222.1 1 69 + 9c51... HOR_12184 chr1H_LR890096.1 9 66 21c7...
     command = f"{bedtools_path} intersect -a {bedfile} -b stdin -nonamecheck -e -F {coverage} -f {coverage}"             
@@ -482,7 +490,7 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,bedfile,bed_folder_path,
 
 
         if(len(intersections) == 0):
-            match_tsv = f'.\t.\t.\t.\t.\t{genome}\t{chrom}\t{start}\t{end}\t{strand}\t'
+            match_tsv = f'.\t.\t.\t.\t{genome}\t{chrom}\t{start}\t{end}\t{strand}\t{ident}\t{cover}\t{mult_mappings}\t'
             return match_tsv + all_ranges
 
         elif len(intersections) > 1:
@@ -494,8 +502,8 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,bedfile,bed_folder_path,
             feature = str(feature).split("\t")
             feature[-1] = feature[-1].replace("\n", "") 
             match_tsv = ( # strand unknown as match is missing from reference genome
-                f'{feature[6]}\t{feature[7]}\t{feature[8]}\t.\t{mult_mappings}'
-                f'\t{genome}\t{chrom}\t{start}\t{end}\t{strand}\t')
+                f'{feature[6]}\t{feature[7]}\t{feature[8]}\t.\t'
+                f'{genome}\t{chrom}\t{start}\t{end}\t{strand}\t{ident}\t{cover}\t{mult_mappings}\t')
             graph_key = feature[4]
 
         # look for this key within graph ranges (grep)
@@ -691,8 +699,8 @@ def main():
     
 
     # print header
-    print(f'#query\tref_chr\t\tref_start\tref_end\t\tref_strand\tmult_mappings\tgenome\t'
-          'chr\tstart\tend\tstrand\tperc_ident\tperc_cover\tgraph_ranges')
+    print(f'#query\tref_chr\t\tref_start\tref_end\t\tref_strand\tgenome\t'
+          'chr\tstart\tend\tstrand\tperc_ident\tperc_cover\tmultmaps\tgraph_ranges')
     
     # compute graph coordinates for matched sequences
     for seqname in gmap_matches:
