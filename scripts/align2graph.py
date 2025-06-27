@@ -325,6 +325,24 @@ def sort_genomes_by_range_number(folder_path, hap_table_file, verbose=False):
 
     return pangenome_genomes
 
+
+def genomes_from_graph(hapIDranges_filename):
+    """Reads hapIDranges file and returns list of genomes in pangenome graph.
+    Assumes that the 1st line starts with # and contains genome names."""
+
+    genomes = []
+    with open(hapIDranges_filename) as f:
+        for line in f:
+            if line.startswith('#'):
+                genomes = line.split("\t")
+                genomes = genomes[3:]  # skip first 3 columns
+                genomes[-1] = genomes[-1].strip()  # remove newline
+                break
+    f.close()
+
+    return genomes
+
+
 # %%
 def run_gmap_genomes(pangenome_genomes, gmap_path, gmap_db, fasta_filename, 
                          min_identity, min_coverage,
@@ -515,21 +533,28 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,bedfile,bed_folder_path,
                                 stdout=subprocess.PIPE,stderr=subprocess.PIPE)
 
                 graph_data = result.stdout.splitlines()
-                if len(graph_data) > 1:
-                    if(verbose == True):
-                        print(f"# WARN(get_overlap_ranges_pangenome): several graph matches: {result.stdout}")
-                    graph_data = graph_data[0]
+
+                if len(graph_data) > 0:
+
+                    if len(graph_data) > 1:
+                        if(verbose == True):
+                            print(f"# WARN(get_overlap_ranges_pangenome): several graph matches: {result.stdout}")
+                        graph_data = graph_data[0]
  
-                feature = graph_data[0].split("\t")
-                feature[-1] = feature[-1].strip()
-                for c in range(0,len(genomes)):
-                    k = feature[c+3]
-                    if k == ".":
-                        continue
-                    else:
-                        clean_k = k[1:-1] #remove <>
-                        if clean_k not in keys:
-                            keys[clean_k] = genomes[c]
+                    feature = graph_data[0].split("\t")
+                    feature[-1] = feature[-1].strip()
+                    for c in range(0,len(genomes)):
+                        k = feature[c+3]
+                        if k == ".":
+                            continue
+                        else:
+                            clean_k = k[1:-1] #remove <>
+                            if clean_k not in keys:
+                                keys[clean_k] = genomes[c]
+
+                else:
+                    #if verbose == True:
+                    print(f"# WARN(get_overlap_ranges_pangenome): no graph matches for {gmap_match} {graph_key}")
 
             except subprocess.CalledProcessError as e:
                 print(f'# ERROR(get_overlap_ranges_pangenome): {e.cmd} failed: {e.stderr}')
@@ -679,22 +704,26 @@ def main():
     print(f"# config_file: {args.config_file}")
     print(f"# minimum identity %: {min_identity}")
     print(f"# minimum coverage %: {min_coverage}")
-    print(f"# minimum coverage range %: {min_coverage_range}\n")
+    print(f"# minimum coverage range %: {min_coverage_range}")
 
-    if verbose_out == True:
-        print(f"# verbose: {verbose_out}")
-    
-    pangenome_genomes = sort_genomes_by_range_number(
+    ranked_pangenome_genomes = sort_genomes_by_range_number(
         pangenome_fastas_folder, 
         hapIDtable, 
         verbose=verbose_out) 
+    print(f"# ranked pangenome genomes: {', '.join(ranked_pangenome_genomes)}\n")
+
+    graph_pangenome_genomes = genomes_from_graph(hapIDranges)   
     
+    if verbose_out == True:
+        print(f"# verbose: {verbose_out}")
+
+
     # define prefix for temp & output files
     temp_prefix = uuid.uuid4().hex
         
     # match all sequences in one batch    
     gmap_matches = run_gmap_genomes(
-        pangenome_genomes, 
+        ranked_pangenome_genomes, 
         gmap_exe, gmap_db, 
         fasta_file, 
         min_identity, min_coverage,
