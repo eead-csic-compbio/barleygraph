@@ -178,7 +178,7 @@ def valid_matches(gff_file, min_identity, min_coverage, verbose=False):
 
 
 # %%
-def get_overlap_ranges_reference(gmap_match,hapIDranges,bed_folder_path,
+def get_overlap_ranges_reference(gmap_match,hapIDranges,genomes,bed_folder_path,
                                 coverage=0.75,all_graph_matches=False,
                                 bedtools_path='bedtools',grep_path='grep',
                                 verbose=False):
@@ -206,17 +206,6 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,bed_folder_path,
 
     if verbose == True:
         print(f"# Checking match for {chrom}:{start}-{end} within reference")
-
-    # read genome list from hapIDranges
-    genomes = []
-    with open(hapIDranges) as f:
-        for line in f:
-            if line.startswith('#'):
-                genomes = line.split("\t")
-                genomes = genomes[3:]
-                genomes[-1] = genomes[-1].strip()
-                break
-    f.close()
 
     # prepare bedtools intersect command to find overlapping range, no strand check
     command = f"{bedtools_path} intersect -a {hapIDranges} -b stdin -nonamecheck -e -F {coverage} -f {coverage}"             
@@ -446,7 +435,7 @@ def run_gmap_genomes(pangenome_genomes, gmap_path, gmap_db, fasta_filename,
     return gmap_matches
 
 # %%
-def get_overlap_ranges_pangenome(gmap_match,hapIDranges,bedfile,bed_folder_path,
+def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_folder_path,
                                 coverage=0.75,all_graph_matches=False,
                                 bedtools_path='bedtools',grep_path='grep',
                                 verbose=False):
@@ -476,17 +465,6 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,bedfile,bed_folder_path,
 
     if verbose == True:
         print(f"# Checking match for {chrom}:{start}-{end} at {bedfile}")
-
-    # read genome list from hapIDranges
-    genomes = []
-    with open(hapIDranges) as f:
-        for line in f:
-            if line.startswith('#'):
-                genomes = line.split("\t")
-                genomes = genomes[3:]
-                genomes[-1] = genomes[-1].strip()
-                break
-    f.close()
 
     # prepare bedtools intersect command to find overlapping range, no strand check,
     # bedfile should contain lines like this:
@@ -744,7 +722,8 @@ def main():
 
                 matched_coords = get_overlap_ranges_reference(
                     gmap_matches[seqname], 
-                    hapIDranges, 
+                    hapIDranges,
+                    graph_pangenome_genomes, 
                     f'{vcf_dbs}hvcf_files/', 
                     coverage=min_coverage_range/100,
                     all_graph_matches=add_ranges,
@@ -756,6 +735,7 @@ def main():
                 matched_coords = get_overlap_ranges_pangenome(
                     gmap_matches[seqname],
                     hapIDranges,
+                    graph_pangenome_genomes,
                     f"{vcf_dbs}hvcf_files/{gmap_matches[seqname]['genome']}.h.bed",
                     f'{vcf_dbs}hvcf_files/',
                     coverage=min_coverage_range/100,
