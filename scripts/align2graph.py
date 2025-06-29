@@ -208,7 +208,7 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,genomes,bed_folder_path,
         print(f"# Checking match for {chrom}:{start}-{end} within reference")
 
     # prepare bedtools intersect command to find overlapping range, no strand check
-    command = f"{bedtools_path} intersect -a {hapIDranges} -b stdin -nonamecheck -e -F {coverage} -f {coverage}"             
+    command = f"{bedtools_path} intersect -sorted -a {hapIDranges} -b stdin -nonamecheck -e -F {coverage} -f {coverage}"             
 
     # BED-format interval of gmap match
     match_interval = f'{chrom}\t{start}\t{end}'
@@ -469,7 +469,7 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_fold
     # prepare bedtools intersect command to find overlapping range, no strand check,
     # bedfile should contain lines like this:
     # chr1H_OX460222.1 1 69 + 9c51... HOR_12184 chr1H_LR890096.1 9 66 21c7...
-    command = f"{bedtools_path} intersect -a {bedfile} -b stdin -nonamecheck -e -F {coverage} -f {coverage}"             
+    command = f"{bedtools_path} intersect -sorted -a {bedfile} -b stdin -nonamecheck -e -F {coverage} -f {coverage}"             
 
     # BED-format interval of gmap match
     match_interval = f'{chrom}\t{start}\t{end}'
