@@ -392,12 +392,14 @@ def run_gmap_genomes(pangenome_genomes, gmap_path, gmap_db, fasta_filename,
 
         except subprocess.CalledProcessError as e:
 
-            # regex to decide whether gmapl is needed (genomes > 4Gbp)
-            pattern = r'For big genomes of more than'
-            match = re.search(pattern, e.stderr.decode())
+            # regexes to decide whether gmapl is needed (genomes > 4Gbp)
+            pattern1 = r'For big genomes of more than'
+            match1 = re.search(pattern1, e.stderr.decode())
+            pattern2 = r'This is a large genome of more than'
+            match2 = re.search(pattern2, e.stderr.decode())
 
             # try gmapl instead
-            if match:
+            if match1 or match2:
                 if verbose == True:
                     print(f"# Running gmapl for {genome}")
 
@@ -411,10 +413,10 @@ def run_gmap_genomes(pangenome_genomes, gmap_path, gmap_db, fasta_filename,
                         print(result.stdout.decode())
 
                 except subprocess.CalledProcessError as e:
-                    print(f"\nERROR(run_gmap_genomes): '{e.cmd}' returned non-zero exit status {e.returncode}.")
+                    print(f"\nERROR(run_gmap_genomes): '{e.cmd}' (gmapl) returned non-zero exit status {e.returncode}.")
 
             else:    
-                print(f"\nERROR(run_gmap_genomes): '{e.cmd}' returned non-zero exit status {e.returncode}.")
+                print(f"\nERROR(run_gmap_genomes): '{e.cmd}' (gmap) returned non-zero exit status {e.returncode}.")
 
         genome_matches = valid_matches(g_gff_filename,min_identity,min_coverage,verbose=verbose)
         
@@ -575,7 +577,7 @@ def main():
     grep_exe = 'grep' # assumed to be available
 
     parser = argparse.ArgumentParser(
-        description="Tool to map sequences in barley pangenome.\n",
+        description="Map sequences within pangenome graph.\n",
         epilog="Citation:\n",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -603,7 +605,9 @@ def main():
     )
 
     parser.add_argument(
-        "--cor", default=4, help="number of cores for gmap, default: 4"
+        "--cor", 
+        default=4, 
+        help="number of cores for gmap, default: 4"
     )
 
     parser.add_argument(
@@ -615,17 +619,20 @@ def main():
     parser.add_argument(
         "--mincover",
         default=95.0,
-        help="min%coverage of gmap matches, default: 95.0",
+        help="min %coverage of gmap matches, default: 95.0",
     )
 
     parser.add_argument(
         "--mincover_range",
         default=75.0,
-        help="min%coverage of gmap matches and pangenome ranges, default: 75.0",
-    )
+        help="min %coverage of gmap matches and pangenome ranges, default: 75.0",
+    ) 
 
-    #guess this is done from bmap_align_to_graph?
-    #parser.add_argument('--show-unmapped', action='store_true', help='Show unmapped sequences in output')
+    parser.add_argument(
+        "--single_genome",
+        default='',
+        help="selected genome to be scanned with GMAP, must be part of graph, default: all genomes",
+    )
 
     parser.add_argument(
         '--verb', 
@@ -659,14 +666,15 @@ def main():
             chr_syns = config['chr_syns']
 
     # get optional params
-    bedtools_exe = args.bedtools_exe
-    ncores       = int(args.cor)
-    min_identity = float(args.minident)
-    min_coverage = float(args.mincover)
+    bedtools_exe  = args.bedtools_exe
+    ncores        = int(args.cor)
+    min_identity  = float(args.minident)
+    min_coverage  = float(args.mincover)
     min_coverage_range = float(args.mincover_range)
-    temp_path    = args.tmp_path
-    verbose_out  = args.verb
-    add_ranges   = args.add_ranges
+    temp_path     = args.tmp_path
+    verbose_out   = args.verb
+    add_ranges    = args.add_ranges
+    single_genome = args.single_genome
 
     ######################################################
 
@@ -684,17 +692,20 @@ def main():
     print(f"# minimum coverage %: {min_coverage}")
     print(f"# minimum coverage range %: {min_coverage_range}")
 
+    # order of genes to be hierarchically scanned with GMAP
     ranked_pangenome_genomes = sort_genomes_by_range_number(
         pangenome_fastas_folder, 
         hapIDtable, 
         verbose=verbose_out) 
-    print(f"# ranked pangenome genomes: {', '.join(ranked_pangenome_genomes)}\n")
+
+    if single_genome == '':
+        print(f"# ranked pangenome genomes: {', '.join(ranked_pangenome_genomes)}\n")    
+    elif single_genome in ranked_pangenome_genomes: 
+        ranked_pangenome_genomes = [ single_genome ]
+        print(f"# single genome to be scanned with GMAP: {single_genome}\n") 
 
     graph_pangenome_genomes = genomes_from_graph(hapIDranges)   
     
-    if verbose_out == True:
-        print(f"# verbose: {verbose_out}")
-
 
     # define prefix for temp & output files
     temp_prefix = uuid.uuid4().hex
