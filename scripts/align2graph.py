@@ -147,17 +147,27 @@ def valid_matches(gff_file, min_identity, min_coverage, verbose=False):
                     #gmap-2024-11-20
                     #ID=query.mrna1;Name=name;Parent=genome.path1;Dir=na;coverage=100.0;identity=98.9;
                     #gmap-2013-08-31
-                    #ID=chr1start.mrna4;Name=chr1start;Parent=chr1start.path4;coverage=99.5;identity=82.4
-                    if fields[2] == "mRNA":
-                        
-                        if(attributes[3].startswith("Dir=")):    
-                            coverage = float(attributes[4].split("=")[1])
-                            identity = float(attributes[5].split("=")[1])   
-                        else:
-                            identity = float(attributes[3].split("=")[1])   
-                            coverage = float(attributes[4].split("=")[1])
+                    #ID=m84096...mrna1;Name=m84096..;Parent=m84096...path1;coverage=38.1;identity=99.3
 
-                        if identity >= min_identity and coverage >= min_coverage:
+                    if fields[2] == "mRNA":
+
+                        match1 = re.search('coverage=([^;]+);identity=([^;]+)', fields[-1])
+                        match2 = re.search('identity=([^;]+);coverage=([^;]+)', fields[-1])
+
+                        if match1:
+                            coverage = float(match1.group(1))
+                            identity = float(match1.group(2))
+                        elif match2: # in case order is swapped
+                            identity = float(match2.group(1))
+                            coverage = float(match2.group(2)) 
+                        else:
+                            coverage = -1.0
+                            identity = -1.0
+                            if verbose == True: 
+                                print(f"# ERROR(valid_matches): cannot parse coverage/identity: {fields[-1]}")                               
+
+                        if identity >=0 and identity >= min_identity and coverage >= min_coverage:
+                            
                             if seqname not in matches:
                                 matches[seqname] = {}
                                 matches[seqname]['matches'] = 0
@@ -173,6 +183,7 @@ def valid_matches(gff_file, min_identity, min_coverage, verbose=False):
                                 matches[seqname]['strand'] = fields[6]
                                 if verbose == True:                    
                                     print("#",line)
+                                               
 
     return matches
 
@@ -335,7 +346,8 @@ def genomes_from_graph(hapIDranges_filename):
 # %%
 def run_gmap_genomes(pangenome_genomes, gmap_path, gmap_db, fasta_filename, 
                          min_identity, min_coverage,
-                         cores=4, prefix='temp', path='/tmp/', verbose=False):
+                         cores=4, prefix='temp', path='/tmp/', 
+                         genomic=False,verbose=False):
     """Iteratively gmaps input FASTA file against list of genomes.
     Returns dictionary with GMAP matches with sequence names as 1ary keys.
     For each input sequence the following 2ary keys are created: 
@@ -381,6 +393,9 @@ def run_gmap_genomes(pangenome_genomes, gmap_path, gmap_db, fasta_filename,
         # try default gmap 
         gmap_command = (
             f"{gmap_path} -D {gmap_db} -d {genome} -t {cores} {g_fasta_filename} -f gff3_gene > {g_gff_filename}")
+        if genomic == True:
+            gmap_command = (
+                f"{gmap_path} --nosplicing -D {gmap_db} -d {genome} -t {cores} {g_fasta_filename} -f gff3_gene > {g_gff_filename}") 
         if verbose == True:
             print(f'# {gmap_command}')
 
@@ -392,31 +407,42 @@ def run_gmap_genomes(pangenome_genomes, gmap_path, gmap_db, fasta_filename,
 
         except subprocess.CalledProcessError as e:
 
-            # regexes to decide whether gmapl is needed (genomes > 4Gbp)
-            pattern1 = r'For big genomes of more than'
-            match1 = re.search(pattern1, e.stderr.decode())
-            pattern2 = r'This is a large genome of more than'
-            match2 = re.search(pattern2, e.stderr.decode())
+            # long reads ie m84096_250523_032626_s1/247992835/ccs might fail
+            # but work if splicing is disabled
+            pattern0 = r'Problem with sequence (\S+)'
+            match0 = re.search(pattern0, e.stderr.decode())
+            if match0:
+                print(f"# WARN: {match0.group(0)} ({genome}), consider using --genomic to disable splicing") 
 
-            # try gmapl instead
-            if match1 or match2:
-                if verbose == True:
-                    print(f"# Running gmapl for {genome}")
+            else:
+                # regexes to decide whether gmapl is needed (genomes > 4Gbp)
+                pattern1 = r'For big genomes of more than'
+                match1 = re.search(pattern1, e.stderr.decode())
+                pattern2 = r'This is a large genome of more than'
+                match2 = re.search(pattern2, e.stderr.decode())
 
-                gmap_command = (
-                    f"{gmap_path}l -D {gmap_db} -d {genome} -t {cores} {g_fasta_filename} -f gff3_gene > {g_gff_filename}")
-
-                try:
-                    result = subprocess.run(gmap_command, shell=True, check=True, 
-                                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                # try gmapl instead
+                if match1 or match2:
                     if verbose == True:
-                        print(result.stdout.decode())
+                        print(f"# Running gmapl for {genome}")
 
-                except subprocess.CalledProcessError as e:
-                    print(f"\nERROR(run_gmap_genomes): '{e.cmd}' (gmapl) returned non-zero exit status {e.returncode}.")
+                    gmap_command = (
+                        f"{gmap_path}l -D {gmap_db} -d {genome} -t {cores} {g_fasta_filename} -f gff3_gene > {g_gff_filename}")
+                    if genomic == True:
+                        gmap_command = (
+                            f"{gmap_path}l --nosplicing -D {gmap_db} -d {genome} -t {cores} {g_fasta_filename} -f gff3_gene > {g_gff_filename}")
+                    
+                    try:
+                        result = subprocess.run(gmap_command, shell=True, check=True, 
+                                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                        if verbose == True:
+                            print(result.stdout.decode())
 
-            else:    
-                print(f"\nERROR(run_gmap_genomes): '{e.cmd}' (gmap) returned non-zero exit status {e.returncode}.")
+                    except subprocess.CalledProcessError as e:
+                        print(f"\nERROR(run_gmap_genomes): '{e.cmd}' (gmapl) returned non-zero exit status {e.returncode}.")
+
+                else:    
+                    print(f"\nERROR(run_gmap_genomes): '{e.cmd}' (gmap) returned non-zero exit status {e.returncode}.")
 
         genome_matches = valid_matches(g_gff_filename,min_identity,min_coverage,verbose=verbose)
         
@@ -639,6 +665,11 @@ def main():
         action='store_true', 
         help='Increase verbosity in output')
     
+    parser.add_argument(
+        '--genomic', 
+        action='store_true', 
+        help='Input sequences are genomic, turn off splicing')
+    
     parser.add_argument('--add_ranges', 
         action='store_true', 
         help='Add all pangenome ranges matching input sequences')
@@ -673,6 +704,7 @@ def main():
     min_coverage_range = float(args.mincover_range)
     temp_path     = args.tmp_path
     verbose_out   = args.verb
+    genomic       = args.genomic
     add_ranges    = args.add_ranges
     single_genome = args.single_genome
 
@@ -688,9 +720,11 @@ def main():
         print(f"# Gmap database version: unknown\n")
 
     print(f"# config_file: {args.config_file}")
+    print(f"# fasta_file: {fasta_file}")
     print(f"# minimum identity %: {min_identity}")
     print(f"# minimum coverage %: {min_coverage}")
     print(f"# minimum coverage range %: {min_coverage_range}")
+    print(f"# genomic: {genomic}")
 
     # order of genes to be hierarchically scanned with GMAP
     ranked_pangenome_genomes = sort_genomes_by_range_number(
@@ -718,6 +752,7 @@ def main():
         min_identity, min_coverage,
         ncores, 
         temp_prefix, temp_path,
+        genomic,
         verbose=verbose_out)
     
 
