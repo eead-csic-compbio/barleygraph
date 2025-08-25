@@ -152,19 +152,19 @@ def valid_matches(gff_file, min_identity, min_coverage, verbose=False):
                     if fields[2] == "mRNA":
 
                         match1 = re.search('coverage=([^;]+);identity=([^;]+)', fields[-1])
-                        match2 = re.search('identity=([^;]+);coverage=([^;]+)', fields[-1])
-
                         if match1:
                             coverage = float(match1.group(1))
                             identity = float(match1.group(2))
-                        elif match2: # in case order is swapped
-                            identity = float(match2.group(1))
-                            coverage = float(match2.group(2)) 
                         else:
-                            coverage = -1.0
-                            identity = -1.0
-                            if verbose == True: 
-                                print(f"# ERROR(valid_matches): cannot parse coverage/identity: {fields[-1]}")                               
+                            match2 = re.search('identity=([^;]+);coverage=([^;]+)', fields[-1])
+                            if match2: # in case order is swapped
+                                identity = float(match2.group(1))
+                                coverage = float(match2.group(2)) 
+                            else:
+                                coverage = -1.0
+                                identity = -1.0
+                                if verbose == True: 
+                                    print(f"# ERROR(valid_matches): cannot parse coverage/identity: {fields[-1]}")                               
 
                         if identity >=0 and identity >= min_identity and coverage >= min_coverage:
                             
