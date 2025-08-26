@@ -131,6 +131,9 @@ def valid_matches(gff_file, min_identity, min_coverage, verbose=False):
     vii) strand (string)"""
 
     matches = {}
+    pattern1 = r'coverage=([^;]+);identity=([^;]+)'
+    pattern2 = r'identity=([^;]+);coverage=([^;]+)'
+    pattern3 = r'Name=([^;]+)'
 
     if not os.path.isfile(gff_file):
         print(f"# ERROR(valid_matches): file {gff_file} does not exist")
@@ -140,9 +143,8 @@ def valid_matches(gff_file, min_identity, min_coverage, verbose=False):
         with open (gff_file) as f:
             for line in f:
                 if not line.startswith('#'):
+                             
                     fields = line.split("\t")
-                    attributes = fields[-1].split(";")
-                    seqname = attributes[1].split("=")[1]
                     
                     #gmap-2024-11-20
                     #ID=query.mrna1;Name=name;Parent=genome.path1;Dir=na;coverage=100.0;identity=98.9;
@@ -151,13 +153,14 @@ def valid_matches(gff_file, min_identity, min_coverage, verbose=False):
 
                     if fields[2] == "mRNA":
 
-                        match1 = re.search('coverage=([^;]+);identity=([^;]+)', fields[-1])
+                        match1 = re.search(pattern1, fields[-1])
                         if match1:
                             coverage = float(match1.group(1))
                             identity = float(match1.group(2))
-                        else:
-                            match2 = re.search('identity=([^;]+);coverage=([^;]+)', fields[-1])
-                            if match2: # in case order is swapped
+
+                        else: # try other order
+                            match2 = re.search(pattern2, fields[-1])
+                            if match2: 
                                 identity = float(match2.group(1))
                                 coverage = float(match2.group(2)) 
                             else:
@@ -168,23 +171,25 @@ def valid_matches(gff_file, min_identity, min_coverage, verbose=False):
 
                         if identity >=0 and identity >= min_identity and coverage >= min_coverage:
                             
-                            if seqname not in matches:
-                                matches[seqname] = {}
-                                matches[seqname]['matches'] = 0
+                            match3 = re.search(pattern3, fields[-1])
+                            if match3:
+                                seqname = match3.group(1)
+                                if seqname not in matches:
+                                    matches[seqname] = {}
+                                    matches[seqname]['matches'] = 0
 
-                            matches[seqname]['matches'] = matches[seqname]['matches'] + 1 
+                                matches[seqname]['matches'] = matches[seqname]['matches'] + 1 
 
-                            if(matches[seqname]['matches'] == 1):
-                                matches[seqname]['ident'] = identity
-                                matches[seqname]['cover'] = coverage
-                                matches[seqname]['chrom'] = fields[0]
-                                matches[seqname]['start'] = int(fields[3])
-                                matches[seqname]['end'] = int(fields[4])
-                                matches[seqname]['strand'] = fields[6]
-                                if verbose == True:                    
-                                    print("#",line)
+                                if(matches[seqname]['matches'] == 1):
+                                    matches[seqname]['ident'] = identity
+                                    matches[seqname]['cover'] = coverage
+                                    matches[seqname]['chrom'] = fields[0]
+                                    matches[seqname]['start'] = int(fields[3])
+                                    matches[seqname]['end'] = int(fields[4])
+                                    matches[seqname]['strand'] = fields[6]
+                                    if verbose == True:                    
+                                        print("#",line)
                                                
-
     return matches
 
 
@@ -356,6 +361,12 @@ def run_gmap_genomes(pangenome_genomes, gmap_path, gmap_db, fasta_filename,
     iii to viii) strings with chromosome, start, end, strand, identity, cover
     """
 
+    # regexes to parse gmap stderr
+    pattern0 = r'Problem with sequence (\S+)'
+    pattern1 = r'SIGSEGV'
+    pattern2 = r'For big genomes of more than'
+    pattern3 = r'This is a large genome of more than'
+
     gmap_matches = {}
 
     # parse sequences and init dictionary of matches
@@ -407,22 +418,21 @@ def run_gmap_genomes(pangenome_genomes, gmap_path, gmap_db, fasta_filename,
 
         except subprocess.CalledProcessError as e:
 
-            # long reads ie m84096_250523_032626_s1/247992835/ccs might fail
-            # but work if splicing is disabled
-            pattern0 = r'Problem with sequence (\S+)'
+            # long reads ie m84096_250523_032626_s1/247992835/ccs might fail unless splicing is disabled,
+            # sometimes this warning is never printed, only SIGSEGV occurs
             match0 = re.search(pattern0, e.stderr.decode())
             if match0:
                 print(f"# WARN: {match0.group(0)} ({genome}), consider using --genomic to disable splicing") 
+            elif re.search(pattern1, e.stderr.decode()):
+                print(f"# WARN: SIGSEGV detected ({genome}), consider using --genomic to disable splicing")
 
             else:
                 # regexes to decide whether gmapl is needed (genomes > 4Gbp)
-                pattern1 = r'For big genomes of more than'
-                match1 = re.search(pattern1, e.stderr.decode())
-                pattern2 = r'This is a large genome of more than'
                 match2 = re.search(pattern2, e.stderr.decode())
+                match3 = re.search(pattern3, e.stderr.decode())
 
                 # try gmapl instead
-                if match1 or match2:
+                if match2 or match3:
                     if verbose == True:
                         print(f"# Running gmapl for {genome}")
 
@@ -441,7 +451,7 @@ def run_gmap_genomes(pangenome_genomes, gmap_path, gmap_db, fasta_filename,
                     except subprocess.CalledProcessError as e:
                         print(f"\nERROR(run_gmap_genomes): '{e.cmd}' (gmapl) returned non-zero exit status {e.returncode}.")
 
-                else:    
+                else:
                     print(f"\nERROR(run_gmap_genomes): '{e.cmd}' (gmap) returned non-zero exit status {e.returncode}.")
 
         genome_matches = valid_matches(g_gff_filename,min_identity,min_coverage,verbose=verbose)
