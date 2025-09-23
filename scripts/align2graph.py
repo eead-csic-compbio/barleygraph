@@ -12,6 +12,7 @@
 # ./align2graph.py Med11.yaml test.fna
 # ./align2graph.py --add_ranges Med11.yaml test.fna
 # ./align2graph.py --verb --add_ranges Med11.yaml test.fna
+# ./align2graph.py --genomic Med11.yaml genome_fragments.fna
 
 # %%
 def parse_fasta_file(fasta, verbose=False):
@@ -223,8 +224,10 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,genomes,bed_folder_path,
     if verbose == True:
         print(f"# Checking match for {chrom}:{start}-{end} within reference")
 
-    # prepare bedtools intersect command to find overlapping range, no strand check
-    command = f"{bedtools_path} intersect -sorted -a {hapIDranges} -b stdin -nonamecheck -e -F {coverage} -f {coverage}"             
+    # prepare bedtools intersect command to find overlapping range, no strand check,
+    # assume input coords are sorted to avoid getBin errors with chroms > 512MB,
+    # see https://bedtools.readthedocs.io/en/latest
+    command = f"{bedtools_path} intersect -a {hapIDranges} -b stdin -nonamecheck -e -F {coverage} -f {coverage} -sorted"             
 
     # BED-format interval of gmap match
     match_interval = f'{chrom}\t{start}\t{end}'
@@ -505,9 +508,10 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_fold
         print(f"# Checking match for {chrom}:{start}-{end} at {bedfile}")
 
     # prepare bedtools intersect command to find overlapping range, no strand check,
+    # see also https://github.com/arq5x/bedtools2/issues/679,
     # bedfile should contain lines like this:
     # chr1H_OX460222.1 1 69 + 9c51... HOR_12184 chr1H_LR890096.1 9 66 21c7...
-    command = f"{bedtools_path} intersect -sorted -a {bedfile} -b stdin -nonamecheck -e -F {coverage} -f {coverage}"             
+    command = f"{bedtools_path} intersect -a {bedfile} -b stdin -nonamecheck -e -F {coverage} -f {coverage} -sorted "
 
     # BED-format interval of gmap match
     match_interval = f'{chrom}\t{start}\t{end}'
