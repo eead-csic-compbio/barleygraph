@@ -301,10 +301,9 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,genomes,bed_folder_path,
 
 
 # %%
-def sort_genomes_by_range_number(folder_path, hap_table_file, verbose=False):
-    """Sorts the genomes in pangenome folder by number of ranges
-    by parsing hap_table_file (max to min). 
-    Returns list with genome names, without .fa extension."""
+def sort_genomes_by_range_number(hap_table_file, verbose=False):
+    """Sorts the genomes in graph by number of ranges; parses hap_table_file (max to min). 
+    Returns list with genome names, without extension."""
 
     # count how many ranges are supported by each genome contributing haplotypes
     hapnum = {}
@@ -324,10 +323,9 @@ def sort_genomes_by_range_number(folder_path, hap_table_file, verbose=False):
 
     pangenome_genomes = []
     for g in sorted(hapnum, key=hapnum.get, reverse=True):
-        if(os.path.isfile(f'{folder_path}/{g}.fa') or os.path.isfile(f'{folder_path}/{g}.fa.gz')):
-            pangenome_genomes.append(g)
-            if verbose == True:
-                print(f'# {g} {hapnum[g]}')
+        pangenome_genomes.append(g)
+        if verbose == True:
+            print(f'# {g} {hapnum[g]}')
 
     #pangenome_genomes = ['HOR_13942'] #debug
 
@@ -700,7 +698,6 @@ def main():
         vcf_dbs = config['vcf_dbs']
         gmap_db = config['gmap_db']
         reference_name = config['reference_name']
-        pangenome_fastas_folder = config['pangenome_fastas']
         hapIDtable  = config['hapIDtable']
         hapIDranges = config['hapIDranges']
         gmap_exe = config['gmap_exe']
@@ -742,7 +739,6 @@ def main():
 
     # order of genes to be hierarchically scanned with GMAP
     ranked_pangenome_genomes = sort_genomes_by_range_number(
-        pangenome_fastas_folder, 
         hapIDtable, 
         verbose=verbose_out) 
 
