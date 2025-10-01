@@ -50,30 +50,10 @@ def parse_fasta_file(fasta, verbose=False):
                 
     return names, sequences
 
-# %%
-def check_gmapdb_version(gmap_db, ref_name):
-    """Returns version of reference Gmap db, '?' by default.
-    Note that old gmap versions do not include version string in file.version."""
-
-    version_db = '?'
-
-    gmap_version_file=f'{gmap_db}/{ref_name}/{ref_name}.version'
-
-    if not os.path.isfile(gmap_version_file):
-        print(f"# ERROR(check_gmapdb_version: file {gmap_version_file} does not exist")
-        return version_db
-
-    else:
-        with open (gmap_version_file) as f:
-            for line in f:
-                if not line.startswith(ref_name):
-                    version_db = line.strip()
-
-    return version_db
 
 # %%
 def check_gmap_version(gmap_path):
-    """Returns version of Gmap binary/executable."""
+    """Returns version of GMAP binary/executable."""
 
     version_exe = '?'
     command = f"{gmap_path} --version"
@@ -302,8 +282,8 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,genomes,bed_folder_path,
 
 # %%
 def sort_genomes_by_range_number(hap_table_file, verbose=False):
-    """Sorts the genomes in graph by number of ranges; parses hap_table_file (max to min). 
-    Returns list with genome names, without extension."""
+    """Sorts the genomes in graph by number of ranges after parsing hap_table_file (max to min). 
+    Returns list with genome names (without extension)."""
 
     # count how many ranges are supported by each genome contributing haplotypes
     hapnum = {}
@@ -317,7 +297,7 @@ def sort_genomes_by_range_number(hap_table_file, verbose=False):
                     hapnum[g] += 1
     hap.close()
     
-    # sort genomes and check they are in folder
+    # sort genomes
     if verbose == True:
         print("\n# genomes sorted by number of ranges:")
 
@@ -721,15 +701,9 @@ def main():
 
     ######################################################
 
-    gmap_db_version = check_gmapdb_version(gmap_db, reference_name)
     gmap_version = check_gmap_version(gmap_exe)
 
     print(f"# Gmap version: {gmap_version}")
-    if(gmap_db_version != '?'):
-        print(f"# Gmap database version: {gmap_db_version} ({reference_name})\n")
-    else:
-        print(f"# Gmap database version: unknown\n")
-
     print(f"# config_file: {args.config_file}")
     print(f"# fasta_file: {fasta_file}")
     print(f"# minimum identity %: {min_identity}")
