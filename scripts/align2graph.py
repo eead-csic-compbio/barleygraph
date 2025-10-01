@@ -711,7 +711,7 @@ def main():
 
     gmap_version = check_gmap_version(gmap_exe)
 
-    print(f"# Gmap version: {gmap_version}")
+    print(f"# GMAP version: {gmap_version}")
     print(f"# config_file: {args.graph_yaml}")
     print(f"# fasta_file: {fasta_file}")
     print(f"# minimum identity %: {min_identity}")
@@ -729,6 +729,14 @@ def main():
     elif single_genome in ranked_pangenome_genomes: 
         ranked_pangenome_genomes = [ single_genome ]
         print(f"# single genome to be scanned with GMAP: {single_genome}\n") 
+
+    # check GMAP indices are in place
+    for genome in ranked_pangenome_genomes:
+        gmap_index_file = f"{gmap_db}/{genome}/{genome}.ref153positions"        
+        if not os.path.isfile(gmap_index_file):
+            print(f"# ERROR: missing GMAP index for {genome}, please index")
+            sys.exit(-2)
+
 
     graph_pangenome_genomes = genomes_from_graph(hapIDranges)   
     
