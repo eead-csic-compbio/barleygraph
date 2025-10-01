@@ -601,13 +601,14 @@ def main():
     )
 
     parser.add_argument(
-        "config_file",
-        help="path to YAML file with pangenome config (required)",
+        "fasta_file",
+        help="path to FASTA file with sequences to map (required)"
     )
 
     parser.add_argument(
-        "fasta_file",
-        help="path to FASTA file with sequences to map (required)"
+        "--graph_yaml",
+        default="graph.yaml",
+        help="path to YAML file with pangenome config, dafault: graph.yaml"
     )
 
     parser.add_argument(
@@ -668,24 +669,31 @@ def main():
 
     args = parser.parse_args()
 
+    # required params
     fasta_file = args.fasta_file
 
-    # parse YAML pangenome config file
+    # parse graph YAML file
     chr_syns = {}
-    with open(args.config_file, "r") as f:
-        config = yaml.load(f, Loader=yaml.FullLoader)
+    try:
+        f = open(args.graph_yaml, "r")
+    except FileNotFoundError:
+        print(f'# ERROR: cannot read file {args.graph_yaml}, please correct --graph_yaml')
+        sys.exit(-1)
+    else:
+        with f:        
+            config = yaml.load(f, Loader=yaml.FullLoader)
 
-        vcf_dbs = config['vcf_dbs']
-        gmap_db = config['gmap_db']
-        reference_name = config['reference_name']
-        hapIDtable  = config['hapIDtable']
-        hapIDranges = config['hapIDranges']
-        gmap_exe = config['gmap_exe']
+            vcf_dbs = config['vcf_dbs']
+            gmap_db = config['gmap_db']
+            reference_name = config['reference_name']
+            hapIDtable  = config['hapIDtable']
+            hapIDranges = config['hapIDranges']
+            gmap_exe = config['gmap_exe']
 
-        if 'chr_syns' in config:
-            # if chr_syns is present, it is a dictionary with chromosome synonyms
-            # e.g. {'chr1H': 'chr1H_LR890096.1', 'chr2H': 'chr2H_LR890097.1', ...}
-            chr_syns = config['chr_syns']
+            if 'chr_syns' in config:
+                # if chr_syns is present, it is a dictionary with chromosome synonyms
+                # e.g. {'chr1H': 'chr1H_LR890096.1', 'chr2H': 'chr2H_LR890097.1', ...}
+                chr_syns = config['chr_syns']
 
     # get optional params
     bedtools_exe  = args.bedtools_exe
@@ -704,7 +712,7 @@ def main():
     gmap_version = check_gmap_version(gmap_exe)
 
     print(f"# Gmap version: {gmap_version}")
-    print(f"# config_file: {args.config_file}")
+    print(f"# config_file: {args.graph_yaml}")
     print(f"# fasta_file: {fasta_file}")
     print(f"# minimum identity %: {min_identity}")
     print(f"# minimum coverage %: {min_coverage}")
