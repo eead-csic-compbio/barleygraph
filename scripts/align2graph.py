@@ -9,10 +9,10 @@
 # Copyright [2024-25] Estacion Experimental de Aula Dei-CSIC
 
 # example calls:
-# ./align2graph.py Med11.yaml test.fna
-# ./align2graph.py --add_ranges Med11.yaml test.fna
-# ./align2graph.py --verb --add_ranges Med11.yaml test.fna
-# ./align2graph.py --genomic Med11.yaml genome_fragments.fna
+# ./align2graph.py test.fna
+# ./align2graph.py --add_ranges --graph_yaml Pan20.yaml test.fna
+# ./align2graph.py --verb --add_ranges test.fna
+# ./align2graph.py --genomic genome_fragments.fna
 
 # %%
 def parse_fasta_file(fasta, verbose=False):
