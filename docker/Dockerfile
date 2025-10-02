@@ -33,7 +33,7 @@ RUN tar xfz gmap-gsnap-2013-08-31.tar.gz && cd gmap-2013-08-31 && ./configure --
 RUN rm gmap-gsnap-2013-08-31.tar.gz
 
 # align2graph 
-RUN wget https://raw.githubusercontent.com/eead-csic-compbio/eead-csic-compbio.github.io/refs/heads/master/scripts/barleygraph/align2graph.py
+RUN wget https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/refs/heads/main/align2graph.py
 RUN chmod +x align2graph.py
 RUN mv align2graph.py align2graph
 
