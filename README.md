@@ -29,11 +29,11 @@ Several steps are required to run it, depending if you want to do [mapping] and/
 
 2. Launch container and build GMAP indices, takes hours and up to 223GB of disk **[mapping]**
 
-```docker run --rm -v /path/to/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Pan20-20251002 index
+    docker run --rm -v /path/to/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Pan20-20251002 index
 
-   # or for the Mediterrean graph
+    # or for the Mediterrean graph
 
-   docker run --rm -v /path/to/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Med13-xyz index```
+    docker run --rm -v /path/to/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Med13-xyz index
     
 3. Map sequences in FASTA files **[mapping]**
 
