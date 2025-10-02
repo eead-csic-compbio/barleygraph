@@ -25,24 +25,24 @@ Several steps are required to run it, depending if you want to do [mapping] and/
 
 1. Create local folder for GMAP indices, outside the container, as these are bulky. In Linux you can do:
 
-```mkdir -m 777 -p /path/to/local_gmap_db```
+> mkdir -m 777 -p /path/to/local_gmap_db
 
 2. Launch container and build GMAP indices, takes hours and up to 223GB of disk **[mapping]**
 
-    docker run --rm -v /path/to/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Pan20-20251002 index
+> docker run --rm -v /path/to/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Pan20-20251002 index
 
-    # or for the Mediterrean graph
+> # or for the Mediterrean graph
 
-    docker run --rm -v /path/to/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Med13-xyz index
+> docker run --rm -v /path/to/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Med13-xyz index
     
 3. Map sequences in FASTA files **[mapping]**
 
-```docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Pan20-20251002 align2graph # see optional params```
+> # see optional params
+> docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Pan20-20251002 align2graph
 
-```docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Pan20-20251002 align2graph sequences.fa```
+> docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Pan20-20251002 align2graph sequences.fa
 
-```docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Pan20-20251002 align2graph --add_ranges sequences.fa```
-
+> docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Pan20-20251002 align2graph --add_ranges sequences.fa
 
 ## mapping output
 
