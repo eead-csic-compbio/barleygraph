@@ -32,6 +32,8 @@ Several steps are required to run it, depending if you want to do [mapping] and/
 
     docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Med13-latest align2graph sequences.fa
 
+    docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Med13-latest align2graph --add_ranges sequences.fa
+
 ## Output
 
 ### mapping
