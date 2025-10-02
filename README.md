@@ -21,27 +21,35 @@ at IPK:
 
 ## howto to run
 
-Several steps are required to run it, depending if you want to do [mapping] and/or [haplotype} analysis:
+Several steps are required to run it, depending if you want to do [mapping] and/or [haplotype] analysis:
 
-1. Create local folder for GMAP indices, outside the container, as these are bulky. In Linux you can do:
+### 1. Create local folder for GMAP indices [mapping]
 
-> mkdir -m 777 -p /path/to/local_gmap_db
+This is done outside the container, as indices are bulky; in Linux you could do it as follows:
 
-2. Launch container and build GMAP indices, takes hours and up to 223GB of disk **[mapping]**
+    mkdir -m 777 -p /path/to/local_gmap_db
 
-> docker run --rm -v /path/to/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Pan20-20251002 index
+### 2. Launch container and build GMAP indices [mapping]
 
-> docker run --rm -v /path/to/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Med13-xyz index
+This takes hours and up to 223GB of disk, but it's only required the first time:
+
+    docker run --rm -v /path/to/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Pan20-20251002 index
+
+    # or instead for the Mediterranean barleys graph
+
+    docker run --rm -v /path/to/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Med13-xyz index
     
-3. Map sequences in FASTA files **[mapping]**
+### 3. Map sequences in FASTA files [mapping]
 
-> docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Pan20-20251002 align2graph
+The first command line can be used to find out about available optional flags; the others are two examples:
 
-> docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Pan20-20251002 align2graph sequences.fa
+    docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Pan20-20251002 align2graph
 
-> docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Pan20-20251002 align2graph --add_ranges sequences.fa
+    docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Pan20-20251002 align2graph sequences.fa
 
-## mapping output
+    docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Pan20-20251002 align2graph --add_ranges sequences.fa
+
+### 4. Mapping output
 
 The parameters of a mapping run are included in the header as # comments.
 The mapping results are in TSV format with the following columns:
