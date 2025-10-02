@@ -521,9 +521,3 @@ for genome_file in "${genome_files[@]}"; do
         samtools faidx "Pan20/data/${genome_name}.fa"
     fi
 done
-
-# If align2graph.py is not present, download it
-if [ ! -f align2graph.py ]; then
-    echo "Downloading align2graph.py script"
-    wget "https://raw.githubusercontent.com/eead-csic-compbio/eead-csic-compbio.github.io/master/scripts/align2graph.py" -O align2graph.py
-fi
