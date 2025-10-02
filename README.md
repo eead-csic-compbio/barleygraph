@@ -19,10 +19,30 @@ Several steps are required to run it, depending if you want to do [mapping] and/
 
     docker run --rm -v /path/to/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Med13-latest index
 
-    # alternatively
+    or
+
     docker run --rm -v /path/to/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Pan20-latest index
     
-3. Map sequences inf FASTA files [mapping]
+3. Map sequences in FASTA files with [mapping]
+
+    docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Med13-latest align2graph # see optional params
 
     docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Med13-latest align2graph sequences.fa
+
+## Output
+
+### mapping
+
+    # GMAP version: 2013-08-31
+    # config_file: graph.yaml
+    # fasta_file: old_bruno/VRN2.fa
+    # minimum identity %: 98.0
+    # minimum coverage %: 95.0
+    # minimum coverage range %: 75.0
+    # genomic: False
+    # ranked pangenome genomes: MorexV3, HOR_2830, HOR_1168, HOR_14121, GDB_136, HOR_3365, HOR_3474, HOR_13942, HOR_21599, HOR_12184, HOR_2779, HOR_10892, HOR_21595
+
+    #query	ref_chr		ref_start	ref_end		ref_strand	genome	chr	start	end	strand	perc_ident	perc_cover	multmaps	graph_ranges
+    VRN2	chr4H_LR890099.1	604188191	604197211	.	HOR_2830	chr4H	602386783	602388450	-	98.8	100.0	No	.
+
 
