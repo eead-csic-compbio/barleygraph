@@ -31,13 +31,10 @@ Several steps are required to run it, depending if you want to do [mapping] and/
 
 > docker run --rm -v /path/to/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Pan20-20251002 index
 
-> # or for the Mediterrean graph
-
 > docker run --rm -v /path/to/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Med13-xyz index
     
 3. Map sequences in FASTA files **[mapping]**
 
-> # see optional params
 > docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Pan20-20251002 align2graph
 
 > docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Pan20-20251002 align2graph sequences.fa
