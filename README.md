@@ -4,7 +4,7 @@
 Sequence alignments are performed with [GMAP]() and both genomic sequences and transcripts are supported.
 This software is to be used from a container shipping with prebuilt PHG graphs of barley pangenomes and tools. 
 Two graphs are available, which include a series of genome sequences which are scanned hierarchically;
-the scan stops with the first match. Note that in both cases the reference is *MorexV3* as annotated 
+the scan stops with the first match. Note that in both cases the reference is **MorexV3** as annotated 
 at IPK:
 
 |graph|notes|genome names and scan order|
