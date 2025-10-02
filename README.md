@@ -1,8 +1,14 @@
 ## barleygraph
 
-[PHG](https://github.com/maize-genetics/phg_v2)-based barley pangenome graphs for sequence mapping and haplotype analysis.
-Sequence alignments are performed with [GMAP]() and both genomic sequences and transcripts are supported.
-This software is to be used from a container shipping with prebuilt PHG graphs of barley pangenomes and tools. 
+BARLEYGRAPH provides [PHG](https://github.com/maize-genetics/phg_v2)-based barley pangenome graphs 
+for sequence mapping and haplotype analysis. This software is to be used from a Docker container 
+shipping with prebuilt PHG graphs of barley pangenomes and tools. 
+
+Inspired by [BARLEYMAP](https://barleymap.eead.csic.es),
+sequence alignments are performed with [GMAP](http://research-pub.gene.com/gmap), which supports both 
+genomic sequences and transcripts. GMAP matches and precomputed graph ranges are intersected with
+[BEDTOOLS](https://bedtools.readthedocs.io/en/latest).
+
 Two graphs are available, which include a series of genome sequences which are scanned hierarchically;
 the scan stops with the first match. Note that in both cases the reference is **MorexV3** as annotated 
 at IPK:
@@ -11,6 +17,8 @@ at IPK:
 |:----|:----|:-----------|
 |Med13|Merges 13 genomes of Mediterranean barley landraces|MorexV3, HOR_2830, HOR_1168, HOR_14121, GDB_136, HOR_3365, HOR_3474, HOR_13942, HOR_21599, HOR_12184, HOR_2779, HOR_10892, HOR_21595|
 |Pan20|Barley pangenome V1|MorexV3, Barke, HOR_9043, HOR_10350, HOR_3081, HOR_3365, Planet, HOR_7552, Akashinriki, OUN333, HOR_13942, HOR_13821, HOR_21599, Igri, Chiba, B1K-04-12, Du_Li_Huang, HOR_8148, GoldenPromise, Hockett|
+
+## howto to run
 
 Several steps are required to run it, depending if you want to do [mapping] and/or [haplotype} analysis:
 
@@ -34,9 +42,8 @@ Several steps are required to run it, depending if you want to do [mapping] and/
 
     docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Med13-latest align2graph --add_ranges sequences.fa
 
-## Output
 
-### mapping
+## mapping output
 
 The parameters of a mapping run are included in the header as # comments.
 The mapping results are in TSV format with the following columns:
@@ -78,9 +85,13 @@ Example output after mapping the VRN2 nucleotide sequence.
 
 See the files at [graphs/](https://github.com/eead-csic-compbio/barleygraph/tree/main/graphs) for the source of genome sequences and the MorexV3 gene annotation.
 
+* Cantalapiedra CP, Boudiar R, Casas AM et al (2015) BARLEYMAP: physical and genetic mapping of nucleotide sequences and annotation of surrounding loci in barley. Mol Breeding 35:13. https://doi.org/10.1007/s11032-015-0253-1
+
 * Bradbury PJ, Casstevens T, Jensen SE et al (2022) The Practical Haplotype Graph, a platform for storing and using pangenomes for imputation. Bioinformatics 38(15):3698-370. https://doi.org/10.1093/bioinformatics/btac410
 
 * Wu TD, Watanabe CK (2005) GMAP: a genomic mapping and alignment program for mRNA and EST sequences. Bioinformatics 21(9):1859-1875. https://doi.org/10.1093/bioinformatics/bti310
+
+* Quinlan AR, Hall IM (2010) BEDTools: a flexible suite of utilities for comparing genomic features. Bioinformatics 26(6):841-842. https://doi.org/10.1093/bioinformatics/btq033
 
 * Jayakodi M, Padmarasu S, Haberer G et al (2020) The barley pan-genome reveals the hidden legacy of mutation breeding. Nature 588:284-289. https://doi.org/10.1038/s41586-020-2947-8
 
