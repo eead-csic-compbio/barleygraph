@@ -4,6 +4,7 @@ LABEL authors="Joan Sarria, Bruno Contreras Moreira"
 LABEL description="Container with align2graph, PHG and selected pangenome graph [Med13, Pan20]"
 LABEL license="GPLv3"
 LABEL maintainers="compbio@eead.csic.es"
+LABEL org.opencontainers.image.source https://github.com/OWNER/REPO
 
 USER root
 
