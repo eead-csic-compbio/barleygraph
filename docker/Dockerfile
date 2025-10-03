@@ -53,24 +53,3 @@ COPY index_${graph} index
 
 ENV PATH="/barleygraph:/barleygraph/gmap-2013-08-31/local/bin:${PATH}"
 SHELL ["conda", "run", "--no-capture-output", "-n", "phgv2-conda", "/bin/bash", "-c"]
-
-#################################  Useful command lines  ################################# 
-#
-# 1) Build container
-#
-# export VERSION=`date '+%Y%m%d'`
-# export DREPO=eeadcsiccompbio/barleygraph
-# docker build --build-arg graph=Med13 --tag ${DREPO}:Med13-${VERSION} --tag ${DREPO}:Med13-20251002 --force-rm --compress .
-# or
-# docker build --build-arg graph=Pan20 --tag ${DREPO}:Pan20-${VERSION} --tag ${DREPO}:Pan20-20251002 --force-rm --compress .
-# 
-# 2) Create local folder for GMAP indices, outside the container, as these are bulky
-#
-# mkdir -m 777 -p ~/local_gmap_db
-#  
-# 3) Launch container:
-# 3.1) make GMAP index if required
-# docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:latest index
-#
-# 3.2) map FASTA sequences
-# docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:latest align2graph test.fa
