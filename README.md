@@ -1,9 +1,9 @@
 ## barleygraph
 
 BARLEYGRAPH provides [PHG](https://github.com/maize-genetics/phg_v2)-based barley pangenome graphs 
-for sequence mapping and haplotype analysis. This software is to be used from a Docker container 
-at https://hub.docker.com/r/eeadcsiccompbio/barleygraph 
-shipping with prebuilt PHG graphs of barley pangenomes and tools. 
+for sequence mapping and haplotype analysis. This software is to be used from a 
+[container](https://github.com/eead-csic-compbio?tab=packages&repo_name=barleygraph)
+shipping with prebuilt PHG graphs of barley pangenomes and tools.
 
 Inspired by [BARLEYMAP](https://barleymap.eead.csic.es),
 sequence alignments are performed with [GMAP](http://research-pub.gene.com/gmap), which supports both 
@@ -19,10 +19,9 @@ at IPK:
 |Med13|Merges 13 genomes of Mediterranean barley landraces|MorexV3, HOR_2830, HOR_1168, HOR_14121, GDB_136, HOR_3365, HOR_3474, HOR_13942, HOR_21599, HOR_12184, HOR_2779, HOR_10892, HOR_21595|
 |Pan20|Barley pangenome V1|MorexV3, Barke, HOR_9043, HOR_10350, HOR_3081, HOR_3365, Planet, HOR_7552, Akashinriki, OUN333, HOR_13942, HOR_13821, HOR_21599, Igri, Chiba, B1K-04-12, Du_Li_Huang, HOR_8148, GoldenPromise, Hockett|
 
-## howto to run
+## How to to run BARLEYGRAPH
 
-Several steps are required to run BARLEYGRAPH, depending if you want to do [mapping] and/or [haplotype] analysis.
-Depending on your settings the docker commands below might require a `sudo` ahead:
+Several steps are required to run BARLEYGRAPH, depending if you want to do [mapping] and/or [haplotype] analysis:
 
 ### 1. Create local folder for GMAP indices [mapping]
 
@@ -32,23 +31,24 @@ This is done outside the container, as indices are bulky; in Linux you could do 
 
 ### 2. Launch container and build GMAP indices [mapping]
 
-This takes hours, over 8GB RAM and up to 223GB of disk, but it's only required the first time:
+The container will first be downloaded if not found locally.
+The `index` command takes hours, over 8GB RAM and up to 223GB of disk, but it's only required the first time:
 
-    docker run --rm -v /path/to/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Pan20-20251002 index
+    docker run --rm -v /path/to/local_gmap_db/:/gmap_db/ -it ghcr.io/eead-csic-compbio/barleygraph:pan20-20251002 index
 
     # or instead for the Mediterranean barleys graph
 
-    docker run --rm -v /path/to/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Med13-xyz index
-    
+    docker run --rm -v /path/to/local_gmap_db/:/gmap_db/ -it ghcr.io/eead-csic-compbio/barleygraph:pan20-xxyyzz index
+ 
 ### 3. Map sequences in FASTA files [mapping]
 
 The first command line can be used to find out about available optional flags; the others are two examples:
 
-    docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Pan20-20251002 align2graph
+    docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it ghcr.io/eead-csic-compbio/barleygraph:pan20-20251002 align2graph
 
-    docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Pan20-20251002 align2graph sequences.fa
+    docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it ghcr.io/eead-csic-compbio/barleygraph:pan20-20251002 align2graph sequences.fa
 
-    docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Pan20-20251002 align2graph --add_ranges sequences.fa
+    docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it ghcr.io/eead-csic-compbio/barleygraph:pan20-20251002 align2graph --add_ranges sequences.fa
 
 ### 4. Mapping output
 
@@ -86,6 +86,13 @@ Example output after mapping the VRN2 nucleotide sequence.
     #query	ref_chr		ref_start	ref_end		ref_strand	genome	chr	start	end	strand	perc_ident	perc_cover	multmaps	graph_ranges
     VRN2	chr4H_LR890099.1	604188191	604197211	.	HOR_2830	chr4H	602386783	602388450	-	98.8	100.0	No	.
 
+## Troubleshooting
+
+If the `docker` commands above fail with an error similar to 
+
+    permission denied while trying to connect to the Docker daemon socket
+
+please check the instructions at https://docs.docker.com/engine/install/linux-postinstall
 
 
 ## References
