@@ -34,7 +34,7 @@ This is done outside the container, as indices are bulky; in Linux you could do 
 The container will first be downloaded if not found locally.
 The `index` command takes hours, over 8GB RAM and up to 223GB of disk, but it's only required the first time:
 
-    docker run --rm -v /path/to/local_gmap_db/:/gmap_db/ -it ghcr.io/eead-csic-compbio/barleygraph:pan20-20251002 index
+    docker run --rm -v /path/to/local_gmap_db/:/gmap_db/ -it ghcr.io/eead-csic-compbio/barleygraph:pan20-20251003 index
 
     # or instead for the Mediterranean barleys graph
 
@@ -44,11 +44,11 @@ The `index` command takes hours, over 8GB RAM and up to 223GB of disk, but it's 
 
 The first command line can be used to find out about available optional flags; the others are two examples:
 
-    docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it ghcr.io/eead-csic-compbio/barleygraph:pan20-20251002 align2graph
+    docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it ghcr.io/eead-csic-compbio/barleygraph:pan20-20251003 align2graph
 
-    docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it ghcr.io/eead-csic-compbio/barleygraph:pan20-20251002 align2graph sequences.fa
+    docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it ghcr.io/eead-csic-compbio/barleygraph:pan20-20251003 align2graph sequences.fa
 
-    docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it ghcr.io/eead-csic-compbio/barleygraph:pan20-20251002 align2graph --add_ranges sequences.fa
+    docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it ghcr.io/eead-csic-compbio/barleygraph:pan20-20251003 align2graph --add_ranges sequences.fa
 
 ### 4. Mapping output
 
