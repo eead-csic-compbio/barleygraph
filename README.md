@@ -21,7 +21,8 @@ at IPK:
 
 ## howto to run
 
-Several steps are required to run it, depending if you want to do [mapping] and/or [haplotype] analysis:
+Several steps are required to run BARLEYGRAPH, depending if you want to do [mapping] and/or [haplotype] analysis.
+Depending on your settings the docker commands below might require a `sudo` ahead:
 
 ### 1. Create local folder for GMAP indices [mapping]
 
@@ -31,7 +32,7 @@ This is done outside the container, as indices are bulky; in Linux you could do 
 
 ### 2. Launch container and build GMAP indices [mapping]
 
-This takes hours and up to 223GB of disk, but it's only required the first time:
+This takes hours, over 8GB RAM and up to 223GB of disk, but it's only required the first time:
 
     docker run --rm -v /path/to/local_gmap_db/:/gmap_db/ -it eeadcsiccompbio/barleygraph:Pan20-20251002 index
 
