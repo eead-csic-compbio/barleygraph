@@ -1,0 +1,13 @@
+name: phgv2.4
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python=3.12
+  - anchorwave=1.2.5
+  - bcftools
+  - samtools
+  - bedtools   
+  - agc=3.0
+  - ropebwt3=3.8
+  - minimap2=2.28
