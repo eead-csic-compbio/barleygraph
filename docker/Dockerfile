@@ -20,8 +20,9 @@ RUN apt update && apt install --no-install-recommends -y \
 	bedtools \
 	&& apt clean && apt purge && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# PHG and python deps
-RUN wget https://raw.githubusercontent.com/maize-genetics/phg_v2/refs/heads/main/src/main/resources/phg_environment.yml
+# PHG and python deps; other versions of GMAP and agc are installed later
+ENV PHGYAML https://raw.githubusercontent.com/maize-genetics/phg_v2/refs/heads/main/src/main/resources/phg_environment.yml
+RUN wget ${PHGYAML}
 RUN echo "  - pyyaml" >> phg_environment.yml
 RUN conda env create -f phg_environment.yml
 RUN echo "conda activate phgv2-conda" >> ~/.bashrc
@@ -29,9 +30,20 @@ ENV PATH /opt/conda/envs/phgv2-conda/bin:$PATH
 ENV CONDA_DEFAULT_ENV phgv2-conda
 
 # GMAP 2013-08-31 makes indexes smaller than version from PHG
-RUN wget http://research-pub.gene.com/gmap/src/gmap-gsnap-2013-08-31.tar.gz
-RUN tar xfz gmap-gsnap-2013-08-31.tar.gz && cd gmap-2013-08-31 && ./configure --prefix=/barleygraph/gmap-2013-08-31/local && make && make install && make clean
-RUN rm gmap-gsnap-2013-08-31.tar.gz
+ENV GVER 2013-08-31
+ENV GPATH /barleygraph/gmap-${GVER}/local
+RUN wget http://research-pub.gene.com/gmap/src/gmap-gsnap-${GVER}.tar.gz
+RUN tar xfz gmap-gsnap-${GVER}.tar.gz && cd gmap-${GVER} && ./configure --prefix=${GPATH} && make && make install && make clean
+RUN rm gmap-gsnap-${GVER}.tar.gz
+
+# compatible agc 3.0,noavx runs on old linux box, 3.1 does not
+ENV AGCVER 3.0
+ENV AGCTAR agc-${AGCVER}_x64-linux-noavx.tar.gz
+ENV AGCURL https://github.com/refresh-bio/agc/releases/download/v${AGCVER}/${AGCTAR}
+ENV AGCPATH /barleygraph/agc-${AGCVER}_x64-linux-noavx/
+RUN wget ${AGCURL}
+RUN tar xfz ${AGCTAR}
+RUN rm ${AGCTAR}
 
 # align2graph 
 RUN wget https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/refs/heads/main/align2graph.py
@@ -51,5 +63,5 @@ COPY test.fa test.fa
 COPY gmap_build.sh gmap_build.sh
 COPY index_${graph} index
 
-ENV PATH="/barleygraph:/barleygraph/gmap-2013-08-31/local/bin:${PATH}"
+ENV PATH="/barleygraph:${AGCPATH}:${GPATH}/bin:${PATH}"
 SHELL ["conda", "run", "--no-capture-output", "-n", "phgv2-conda", "/bin/bash", "-c"]
