@@ -3,7 +3,7 @@ channels:
   - conda-forge
   - bioconda
 dependencies:
-  - openjdk:21.0.7
+  - openjdk=21.0.7
   - python=3.12
   - pyyaml
   - anchorwave=1.2.5
