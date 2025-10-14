@@ -7,6 +7,10 @@ shipping with prebuilt PHG graphs of barley pangenomes and tools.
 
 ![PHG_database](https://github.com/eead-csic-compbio/barleygraph/blob/main/miscellaneous/Esquema_PHG.png)
 
+>    It is based on 2.4 phg version.
+>
+>    Find here the [2.4.69.224 release](https://github.com/maize-genetics/phg_v2/releases/tag/2.4.69.224).
+
 Inspired by [BARLEYMAP](https://barleymap.eead.csic.es),
 sequence alignments are performed with [GMAP](http://research-pub.gene.com/gmap), which supports both 
 genomic sequences and transcripts. GMAP matches and precomputed graph ranges are intersected with
@@ -109,7 +113,29 @@ It generates a [ropebwt3](https://github.com/lh3/ropebwt3) index file, with _.fm
 
 ### Imputation
 
-From fastq files, maps and get back a keyfile with pangenome ranges matched. WORK ON PROGRESS
+From fastq files, maps and get back the most likely haplotype paths. The resulting file is actually a [h.vcf](https://phg.maizegenetics.net/hvcf_specifications/) file.
+Take as imput raw fastq reads (two files, if there are pair-ended reads). Files must end with ```.fastq```,```.fq```,```.fastq.gz``` or ```fq.gz```.
+
+    imputation <R1_fastq> 
+    imputation <R1_fastq> <R2_fastq>
+
+>    Note: You can specify a number of threads to commit
+> 
+>    If empty field,  default value is 8 threads
+
+    imputation <R1_fastq> -t <int>
+    imputation <R1_fastq> <R2_fastq> -t <int>
+
+The output file is a **h**aplotype **v**ariant **c**all **f** or hVCF. Find more details at the [official specification documents](https://phg.maizegenetics.net/convenience_commands/#create-a-gff-file-from-an-imputed-hvcf-file). It is basically a gapless pseudoassembly based on the inference of haplotype blocks, where each line correspond to an individual block or range.
+
+### Imputed haplotypes stats
+>    WOK
+
+### Pseudoassembly from hVCF
+>    WOK
+
+### Haplotype path painting
+>    WOK
 
 ## Troubleshooting
 
