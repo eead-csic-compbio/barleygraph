@@ -5,6 +5,8 @@ for sequence mapping and haplotype analysis. This software is to be used from a
 [container](https://github.com/eead-csic-compbio?tab=packages&repo_name=barleygraph)
 shipping with prebuilt PHG graphs of barley pangenomes and tools.
 
+![PHG_database](https://github.com/eead-csic-compbio/barleygraph/blob/main/miscellaneous/Esquema_PHG.png)
+
 Inspired by [BARLEYMAP](https://barleymap.eead.csic.es),
 sequence alignments are performed with [GMAP](http://research-pub.gene.com/gmap), which supports both 
 genomic sequences and transcripts. GMAP matches and precomputed graph ranges are intersected with
@@ -21,7 +23,11 @@ at IPK:
 
 ## How to to run BARLEYGRAPH
 
-Several steps are required to run BARLEYGRAPH, depending if you want to do [mapping] and/or [haplotype] analysis:
+Several steps are required to run BARLEYGRAPH, depending if you want to do [mapping](https://github.com/eead-csic-compbio/barleygraph/edit/main/README.md#mapping) and/or [haplotype](https://github.com/eead-csic-compbio/barleygraph/edit/main/README.md#haplotype-analysis) analysis:
+
+# Mapping
+
+<img src="https://github.com/eead-csic-compbio/barleygraph/blob/main/miscellaneous/Align2graph_esquema.png"  width="400">
 
 ### 1. Create local folder for GMAP indices [mapping]
 
@@ -85,6 +91,25 @@ Example output after mapping the VRN2 nucleotide sequence.
 
     #query	ref_chr		ref_start	ref_end		ref_strand	genome	chr	start	end	strand	perc_ident	perc_cover	multmaps	graph_ranges
     VRN2	chr4H_LR890099.1	604188191	604197211	.	HOR_2830	chr4H	602386783	602388450	-	98.8	100.0	No	.
+
+# Haplotype analysis
+kmer-based alignment of input FASTQ ﬁles from low-deep whole genome sequencing data. Infer haplotype blocks from the pangenome, achieving a pseudoassembly. It applies the Viterbi algorithm to preserve local haplotype context, improving both ancestry inference and imputation accuracy
+
+<img src="https://github.com/eead-csic-compbio/barleygraph/blob/main/miscellaneous/Imputation_esquema.png" width="300">
+
+### Build kmer index
+Build a kmer index of the pangenome, which is mandatory for afterwards imputate queries. It is important to note that, even though is a single-time running command, it requires high ammount of resources, up to ~256 RAM gb, and 100 gb of free -temporary- disk space. It depends on your machine computning capacities, but expect a few tens of hours to be completed. Those numbers regarding Pan20, slgihtly less for Med13.
+
+    build_imputation_index
+    build_imputation index -t <int>
+
+ >    Note: Default threads if not specified = 8
+
+It generates a [ropebwt3](https://github.com/lh3/ropebwt3) index file, with _.fmd_ extension.
+
+### Imputation
+
+From fastq files, maps and get back a keyfile with pangenome ranges matched. WORK ON PROGRESS
 
 ## Troubleshooting
 
