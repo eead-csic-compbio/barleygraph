@@ -18,7 +18,7 @@ genomic sequences and transcripts. GMAP matches and precomputed graph ranges are
 
 Two graphs are available, which include a series of genome sequences which are scanned hierarchically;
 the scan stops with the first match. Note that in both cases the reference is **MorexV3** as annotated 
-at IPK:
+at [IPK](https://galaxy-web.ipk-gatersleben.de/libraries/folders/Fa676e8f07209a3be/dataset/78efbc10d9dd2218):
 
 |graph|notes|genome names and scan order|
 |:----|:----|:-----------|
