@@ -42,7 +42,7 @@ This is done outside the container, as indices are bulky; in Linux you could do 
 ### 2. Launch container and build GMAP indices [mapping]
 
 The container will first be downloaded if not found locally.
-The `index` command takes hours, over 8GB RAM and up to 223GB of disk, but it's only required the first time:
+The `index` command takes hours, over 8GB RAM and up to 163GB of disk, but it's only required the first time:
 
     docker run --rm -v /path/to/local_gmap_db/:/gmap_db/ -it ghcr.io/eead-csic-compbio/barleygraph:pan20-20251008 index
 
