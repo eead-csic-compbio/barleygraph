@@ -587,7 +587,6 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_fold
 
     return match_tsv + all_ranges
 
-
 # %%
 def main():
 
@@ -802,9 +801,6 @@ def main():
             print(f"{seqname}\t{ref_chr}\t{matched_coords}")
 
 
-         
-
-
 # %%
 if __name__ == "__main__":
 
@@ -816,8 +812,12 @@ if __name__ == "__main__":
     import re
     import tempfile
     import uuid
+    import time
     import yaml
+
+    start_time = time.time()
 
     main()
 
-
+    print("\n\n# runtime: %1.0fs\n" % 
+        (time.time() - start_time))
