@@ -162,6 +162,8 @@ See the files at [graphs/](https://github.com/eead-csic-compbio/barleygraph/tree
 
 * Mascher M, Wicker T, Jenkins J, et al (2021) Long-read sequence assembly: a technical evaluation in barley. The Plant Cell 33(6):1888-1906. https://doi.org/10.1093/plcell/koab077
 
+## Citation
+
 
 ## Funding 
 
