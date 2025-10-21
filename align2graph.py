@@ -595,7 +595,7 @@ def main():
 
     parser = argparse.ArgumentParser(
         description="Map sequences within pangenome graph.\n",
-        epilog="Citation:\n",
+        epilog="Citation: see https://github.com/eead-csic-compbio/barleygraph\n",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
@@ -631,19 +631,19 @@ def main():
     parser.add_argument(
         "--minident",
         default=98.0,
-        help="min %identity of gmap matches, default: 98.0",
+        help="min %%identity of gmap matches, default: 98.0"
     )
 
     parser.add_argument(
         "--mincover",
         default=95.0,
-        help="min %coverage of gmap matches, default: 95.0",
+        help="min %%coverage of gmap matches, default: 95.0"
     )
 
     parser.add_argument(
         "--mincover_range",
         default=75.0,
-        help="min %coverage of gmap matches and pangenome ranges, default: 75.0",
+        help="min %%coverage of gmap matches and pangenome ranges, default: 75.0"
     ) 
 
     parser.add_argument(
@@ -655,16 +655,19 @@ def main():
     parser.add_argument(
         '--verb', 
         action='store_true', 
-        help='Increase verbosity in output')
+        help='Increase verbosity in output'
+    )
     
     parser.add_argument(
         '--genomic', 
         action='store_true', 
-        help='Input sequences are genomic, turn off splicing')
+        help='Input sequences are genomic, turn off splicing'
+    )
     
     parser.add_argument('--add_ranges', 
         action='store_true', 
-        help='Add all pangenome ranges matching input sequences')
+        help='Add all pangenome ranges matching input sequences'
+    )
 
     args = parser.parse_args()
 
@@ -694,7 +697,7 @@ def main():
                 # e.g. {'chr1H': 'chr1H_LR890096.1', 'chr2H': 'chr2H_LR890097.1', ...}
                 chr_syns = config['chr_syns']
 
-    # get optional params
+    # get other optional params
     bedtools_exe  = args.bedtools_exe
     ncores        = int(args.cor)
     min_identity  = float(args.minident)
@@ -819,5 +822,6 @@ if __name__ == "__main__":
 
     main()
 
-    print("\n\n# runtime: %1.0fs\n" % 
-        (time.time() - start_time))
+#    print(start_time)
+#    print("\n\n# runtime: %1.0fs\n" % 
+#        (time.time() - start_time))
