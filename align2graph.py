@@ -575,7 +575,7 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_fold
                     bed_data = b.split("\t")
                     if len(bed_data) > 4:
                         if num_bed_lines == 0:
-                            keys[k] = f'[{keys[k]}]{bed_data[1]}-{bed_data[2]}({bed_data[3]})'
+                            keys[k] = f'[{keys[k]}]{bed_data[0]}:{bed_data[1]}-{bed_data[2]}({bed_data[3]})'
                         else:
                             keys[k] += f',{bed_data[0]}:{bed_data[1]}-{bed_data[2]}({bed_data[3]})'
                     num_bed_lines += 1
