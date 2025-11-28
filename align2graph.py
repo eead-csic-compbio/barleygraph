@@ -517,7 +517,7 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_fold
 
         if(len(intersections) == 0):
             match_tsv = f'.\t.\t.\t.\t{genome}\t{chrom}\t{start}\t{end}\t{strand}\t{ident}\t{cover}\t{mult_mappings}\t'
-            return match_tsv + all_ranges
+            return match_tsv + aligned_ranges
 
         elif len(intersections) > 1:
             if(verbose == True):
