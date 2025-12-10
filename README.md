@@ -128,14 +128,68 @@ Take as imput raw fastq reads (two files, if there are pair-ended reads). Files 
 
 The output file is a **h**aplotype **v**ariant **c**all **f** or hVCF. Find more details at the [official specification documents](https://phg.maizegenetics.net/convenience_commands/#create-a-gff-file-from-an-imputed-hvcf-file). It is basically a gapless pseudoassembly based on the inference of haplotype blocks, where each line correspond to an individual block or range.
 
-### Imputed haplotypes stats
->    WOK
 
-### Pseudoassembly from hVCF
->    WOK
+### Imputed haplotypes processing
+
+Convert h.vcf (haplotype VCF) files to BED format for easier analysis and visualization:
+
+    hvcf2bed <vcf_folder> [genome_name]
+    hvcf2bed <vcf_folder> [genome_name] -v
+
+**Arguments:**
+- `vcf_folder`: Path to folder containing h.vcf or h.vcf.gz files
+- `genome_name` (optional): Specific genome to convert. If not provided, converts all h.vcf files in folder
+- `-v, --verbose`: Enable verbose output for debugging
+
+**Output:** Creates a BED file for each h.vcf file with columns: chrom, start, end, strand, checksum, genome, ref_chr, ref_start, ref_end, ref_checksum
+
+**Example:**
+```bash
+hvcf2bed Med13/vcf_dbs/hvcf_files/ MorexV3
+hvcf2bed Med13/vcf_dbs/hvcf_files/ -v  # Convert all files with verbose output
+```
 
 ### Haplotype path painting
->    WOK
+
+Generate visual plots of haplotype blocks from h.vcf files showing how different samples' genomes are composed of pangenome haplotypes:
+
+> NOTE: You need to have all both pangenome and imputed .h.vcf files in the same folder. You may either move the imputed to Pan20/vcf_dbs/hvcf_files (or Med13/vcf_dbs/hvcf_files), the oposite (move the pangenome files into the output imputed files) or just create a new folder with soft links to group them up.
+
+    haplopainting --hvcf-folder <path> --samples-list <file> [options]
+
+**Arguments:**
+- `--hvcf-folder` (required): Path to folder containing h.vcf files
+- `--samples-list` (required): TSV file with columns: Sort, Genotype, Group (Reference/Pangenome/Imputed)
+- `-c, --chromosome` (optional): Specific chromosome(s) to plot (e.g., chr1H chr2H). If not specified, all are plotted
+- `-r, --region` (optional): Region to plot in format START-END (e.g., 1000000-2000000)
+- `--plot-pangenome-references`: Include pangenome samples in plots (default: exclude)
+- `-v, --verbose`: Enable verbose output showing progress
+
+**Samples list format:**
+```
+Sort	Genotype	Group
+1	MorexV3	Reference
+2	HOR_2830	Pangenome
+3	HOR_1168	Pangenome
+...
+15  YourSample  Imputed
+...
+```
+
+>    Note: You can use `samplelist.tsv` as a template and add your imputed samples there.
+
+**Output:** PNG plots saved in `<hvcf_folder>/plots/` directory
+
+**Example:**
+```bash
+haplopainting --hvcf-folder Med13/vcf_dbs/hvcf_files/ --samples-list samplelist.tsv -v
+haplopainting --hvcf-folder Med13/vcf_dbs/hvcf_files/ --samples-list samplelist.tsv -c chr1H chr2H --plot-pangenome-references
+haplopainting --hvcf-folder Med13/vcf_dbs/hvcf_files/ --samples-list samplelist.tsv -c chr1H -r 1000000-2000000 -v
+```
+
+## Current status:
+
+As soon as Med13 is released, both Pan20 and Med13 will be available publically at this repository. At this moment, you need to own Pan20.tgz and Med20.tgz to use this docker.
 
 ## Troubleshooting
 
