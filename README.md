@@ -155,6 +155,8 @@ Generate visual plots of haplotype blocks from h.vcf files showing how different
 
 > NOTE: You need to have all both pangenome and imputed .h.vcf files in the same folder. You may either move the imputed to Pan20/vcf_dbs/hvcf_files (or Med13/vcf_dbs/hvcf_files), the oposite (move the pangenome files into the output imputed files) or just create a new folder with soft links to group them up.
 
+![Haplopainting_example](https://github.com/eead-csic-compbio/barleygraph/blob/main/miscellaneous/chr4H_FULL_haplotype_painting.png)
+
     haplopainting --hvcf-folder <path> --samples-list <file> [options]
 
 **Arguments:**
