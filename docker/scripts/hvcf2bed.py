@@ -12,16 +12,14 @@ def parse_vcf_lines(lines, genome_name, verbose=False):
     output_lines = []
     prev_checksum = None
 
-    # Pre-compile regex patterns (order matters!)
-    # Multi-region format (quoted Regions field) - more flexible pattern
-    pat_multi = re.compile(
-        r'SampleName=([^,>]+).*?Regions="([^"]+)".*?Checksum=([^,]+).*?RefChecksum=([^,>]+).*?RefRange=([^:]+):(\d+)-(\d+)'
-    )
-    
-    # Standard format (RefChecksum before RefRange)
-    pat_std = re.compile(
-        r'SampleName=([^,]+).*?Regions=([^:]+):(\d+)-(\d+)(?!.*Regions=).*?Checksum=([^,]+).*?RefChecksum=([^,]+).*?RefRange=([^:]+):(\d+)-(\d+)'
-    )
+    # Pre-compile regex patterns - simplified approach
+    # Extract individual fields using simple patterns
+    pat_samplename = re.compile(r'SampleName=([^,>]+)')
+    pat_regions = re.compile(r'Regions=([^,>]+)')
+    pat_checksum = re.compile(r'Checksum=([^,>]+)')
+    pat_refrange = re.compile(r'RefRange=([^,>]+)')
+    pat_refchecksum = re.compile(r'RefChecksum=([^,>]+)')
+    pat_regions_quoted = re.compile(r'Regions="([^"]+)"')
 
     def process_entry(chr_, start, end, checksum, genome, ref_chr, ref_start, ref_end, ref_checksum, is_multi=False):
         nonlocal prev_checksum, empty_ranges, skipped_checksums_bug, verbose
@@ -84,45 +82,92 @@ def parse_vcf_lines(lines, genome_name, verbose=False):
         if not line.startswith("##ALT"):
             continue
 
-        # Check multi-region FIRST (has quoted regions with commas inside quotes)
-        m2 = pat_multi.search(line)
-        if m2:
-            genome, regions, checksum, ref_checksum, ref_chr, ref_start, ref_end = m2.groups()
-            
-            # For multi-region, collect all segment lengths to see if any are valid
-            segments = regions.split(",")
-            valid_segment_lengths = []
-            
-            for segment in segments:
-                seg_match = re.match(r'([^:]+):(\d+)-(\d+)', segment.strip())
-                if seg_match:
-                    s_chr, s_start, s_end = seg_match.groups()
-                    seg_length = abs(int(s_end) - int(s_start))
-                    valid_segment_lengths.append(seg_length)
-            
+        # Extract all fields
+        samplename_match = pat_samplename.search(line)
+        checksum_match = pat_checksum.search(line)
+        refrange_match = pat_refrange.search(line)
+        refchecksum_match = pat_refchecksum.search(line)
+        
+        if not (samplename_match and checksum_match and refrange_match and refchecksum_match):
             if verbose:
-                non_zero = [l for l in valid_segment_lengths if l > 0]
-                zero_count = len([l for l in valid_segment_lengths if l == 0])
-                if zero_count > 0:
-                    print(f"# Matched multi-region format for {checksum} ({len(segments)} segments: {zero_count} zero-length, {len(non_zero)} valid)")
-                else:
-                    print(f"# Matched multi-region format for {checksum} ({len(segments)} segments, all valid)")
-            
-            # Process using RefRange (which should be valid)
-            process_entry(None, None, None, checksum, genome, ref_chr, ref_start, ref_end, ref_checksum, is_multi=True)
+                print(f"# WARNING (line {lineno}): Missing required fields in ALT line.")
+                print(f"# Line content (first 500 chars): {line[:500]}")
+            continue
+        
+        sample_name = samplename_match.group(1)
+        checksum = checksum_match.group(1)
+        refchecksum = refchecksum_match.group(1)
+        refrange_str = refrange_match.group(1)
+        
+        # Parse RefRange (chr:start-end)
+        refrange_parts = refrange_str.split(':')
+        if len(refrange_parts) != 2:
+            if verbose:
+                print(f"# WARNING (line {lineno}): Invalid RefRange format: {refrange_str}")
+            continue
+        
+        ref_chr = refrange_parts[0]
+        ref_coords = refrange_parts[1].split('-')
+        if len(ref_coords) != 2:
+            if verbose:
+                print(f"# WARNING (line {lineno}): Invalid RefRange coordinates: {refrange_parts[1]}")
+            continue
+        
+        try:
+            ref_start = int(ref_coords[0])
+            ref_end = int(ref_coords[1])
+        except ValueError:
+            if verbose:
+                print(f"# WARNING (line {lineno}): Non-numeric RefRange coordinates: {refrange_parts[1]}")
+            continue
+        
+        # Check for quoted regions (multi-region)
+        regions_quoted_match = pat_regions_quoted.search(line)
+        if regions_quoted_match:
+            # Multi-region format
+            regions_str = regions_quoted_match.group(1)
+            segments = regions_str.split(',')
+            for segment in segments:
+                segment = segment.strip()
+                seg_parts = segment.split(':')
+                if len(seg_parts) == 2:
+                    s_chr = seg_parts[0]
+                    s_coords = seg_parts[1].split('-')
+                    if len(s_coords) == 2:
+                        try:
+                            s_start = int(s_coords[0])
+                            s_end = int(s_coords[1])
+                            process_entry(s_chr, s_start, s_end, checksum, sample_name, ref_chr, ref_start, ref_end, refchecksum, is_multi=True)
+                        except ValueError:
+                            pass
             prev_checksum = checksum
-            continue
-
-        # Check standard format (single region, no quotes)
-        m1 = pat_std.search(line)
-        if m1:
-            genome, chr_, start, end, checksum, ref_checksum, ref_chr, ref_start, ref_end = m1.groups()
-            process_entry(chr_, start, end, checksum, genome, ref_chr, ref_start, ref_end, ref_checksum)
-            continue
-
-        if verbose:
-            print(f"# WARNING (line {lineno}): No match for ALT line.")
-            print(f"# Line content (first 500 chars): {line[:500]}")
+        else:
+            # Single-region format
+            regions_match = pat_regions.search(line)
+            if regions_match:
+                regions_str = regions_match.group(1)
+                region_parts = regions_str.split(':')
+                if len(region_parts) == 2:
+                    chr_ = region_parts[0]
+                    coords = region_parts[1].split('-')
+                    if len(coords) == 2:
+                        try:
+                            start = int(coords[0])
+                            end = int(coords[1])
+                            process_entry(chr_, start, end, checksum, sample_name, ref_chr, ref_start, ref_end, refchecksum)
+                        except ValueError:
+                            if verbose:
+                                print(f"# WARNING (line {lineno}): Non-numeric coordinates in Regions: {regions_str}")
+                    else:
+                        if verbose:
+                            print(f"# WARNING (line {lineno}): Invalid Regions format: {regions_str}")
+                else:
+                    if verbose:
+                        print(f"# WARNING (line {lineno}): Invalid Regions format: {regions_str}")
+            else:
+                if verbose:
+                    print(f"# WARNING (line {lineno}): No Regions field found.")
+                    print(f"# Line content (first 500 chars): {line[:500]}")
 
     if verbose:
         print(f"# Skipped {skipped_checksums_bug} duplicate checksums")
