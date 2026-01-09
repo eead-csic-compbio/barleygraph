@@ -92,6 +92,8 @@ phg initdb --db-path Pan20/vcf_dbs/
 
 # https://www.ebi.ac.uk/ena/browser/api/fasta/GCA_904849725.1?download=true&gzip=true   MorexV3
 
+# TO DO: download all sources from ENA and not IPK database
+
 # Akashinriki
 if [ ! -f Pan20/data/Akashinriki.fasta.gz ] && [ ! -f Pan20/data/Akashinriki.fa ]; then
     wget "https://galaxy-web.ipk-gatersleben.de/api/libraries/datasets/download/uncompressed?ld_ids=b8a0d6158b9961df&folder_ids=" -O Pan20/data/Akashinriki.fasta.gz
@@ -149,7 +151,8 @@ fi
 
 # HOR_3081
 if [ ! -f Pan20/data/HOR_3081.fasta.gz ] && [ ! -f Pan20/data/HOR_3081.fa ]; then
-    wget "https://galaxy-web.ipk-gatersleben.de/api/libraries/datasets/download/uncompressed?ld_ids=be8c8ac3dbd1dd54&folder_ids=" -O Pan20/data/HOR_3081.fasta.gz
+    wget "https://galaxy-web.ipk-gatersleben.de/api/libraries/datasets/download/uncompressed?ld_ids=fbff8f73b82d1777&folder_ids=" -O Pan20/data/HOR_3081.fasta.gz
+# Old: https://galaxy-web.ipk-gatersleben.de/api/libraries/datasets/download/uncompressed?ld_ids=be8c8ac3dbd1dd54&folder_ids=
 fi
 
 # HOR_3365
