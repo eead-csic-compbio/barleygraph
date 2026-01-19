@@ -6,7 +6,7 @@
 # Returns reference-based coordinates of matched sequence
 #
 # J Sarria, B Contreras-Moreira
-# Copyright [2024-25] Estacion Experimental de Aula Dei-CSIC
+# Copyright [2024-26] Estacion Experimental de Aula Dei-CSIC
 
 # example calls:
 # ./align2graph.py test.fna
@@ -191,7 +191,7 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,genomes,bed_folder_path,
     keys = {}
     match_tsv = ''
     mult_mappings = 'No'
-    all_ranges = '.'
+    aligned_ranges = '.'
 
     chrom = gmap_match['chrom']
     genome = gmap_match['genome']
@@ -226,7 +226,7 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,genomes,bed_folder_path,
 
         if(len(intersections) == 0):
             match_tsv = f'.\t.\t.\t.\t{genome}\t{chrom}\t{start}\t{end}\t{strand}\t{ident}\t{cover}\t{mult_mappings}\t'
-            return match_tsv + all_ranges
+            return match_tsv + aligned_ranges
 
         elif len(intersections) > 1:
             if(verbose == True):
@@ -252,6 +252,11 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,genomes,bed_folder_path,
 
     except subprocess.CalledProcessError as e:
         print(f'# ERROR(get_overlap_ranges_reference): {e.cmd} failed: {e.stderr}')
+
+    # TODO:
+    # i)  all,redundant checksums should be taken, not just unique ones, and order should be conserved
+    # iia) gmap alignments should be performed for all ranges
+    # iib) gampa done only for unique ranges, but then actual genome coords must be recomputed for redundant ranges, cumbersome?
 
     # retrieve genomic ranges matching these keys,
     # multiple matches allowed to support 1toN mappings (CNVs)
@@ -283,7 +288,7 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,genomes,bed_folder_path,
                                                     gmap_match['sequence'], sorted(keys.values()),
                                                     verbose=verbose)
 
-    return match_tsv + all_ranges
+    return match_tsv + aligned_ranges
 
 
 # %%
@@ -514,7 +519,6 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_fold
         if verbose == True:
             print(f"# INFO(get_overlap_ranges_pangenome): {result.stdout}")
 
-
         if(len(intersections) == 0):
             match_tsv = f'.\t.\t.\t.\t{genome}\t{chrom}\t{start}\t{end}\t{strand}\t{ident}\t{cover}\t{mult_mappings}\t'
             return match_tsv + aligned_ranges
@@ -620,7 +624,7 @@ def align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
                                 shell=True, text=True,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.DEVNULL)
-        
+ 
         for line in result.stdout.splitlines():
             header = re.search(r"^>", line)
             if header: 
