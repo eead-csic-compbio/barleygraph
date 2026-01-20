@@ -6,7 +6,7 @@
 # Returns reference-based coordinates of matched sequence
 #
 # J Sarria, B Contreras-Moreira
-# Copyright [2024-26] Estacion Experimental de Aula Dei-CSIC
+# Copyright [2024-25] Estacion Experimental de Aula Dei-CSIC
 
 # example calls:
 # ./align2graph.py test.fna
@@ -15,6 +15,17 @@
 # ./align2graph.py --genomic genome_fragments.fna
 
 # %%
+import argparse
+import subprocess
+import os
+from pathlib import Path
+import sys
+import re
+import tempfile
+import uuid
+import time
+import yaml
+
 def parse_fasta_file(fasta, verbose=False):
     """Takes a FASTA filename and parses sequence names before 1st space.
     Returns: i) list of sequence names in input order, 
@@ -65,7 +76,8 @@ def check_gmap_version(gmap_path):
 
         #Part of GMAP package, version 2024-11-20
         data = result.stdout.splitlines()
-        version_exe = data[2].split()[5]
+        if len(data) > 2:
+            version_exe = data[2].split()[5]
 
     except subprocess.CalledProcessError as e:
         print(f'# ERROR(check_gmap_version): {e.cmd} failed: {e.stderr}')
@@ -179,6 +191,7 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,genomes,bed_folder_path,
                                 coverage=0.75,all_graph_matches=False,
                                 bedtools_path='bedtools',grep_path='grep',
                                 agc_path='agc', agc_db_path='', gmap_path='gmap',
+                                ranked_genomes=None,
                                 verbose=False):
     """Retrieves PHG keys for ranges overlapping gmap match in reference genome.
     Passed coverage is used to intersect ranges and match. Overlap does not consider strandness. 
@@ -188,10 +201,11 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,genomes,bed_folder_path,
     match_genome, match_chr, match_start, match_end, match_strand, 
     match_identity,match_coverage,other_matches (Yes/No),graph_ranges."""
 
+    # keys: key -> set of genome names (to allow multiple genomes per key)
     keys = {}
     match_tsv = ''
     mult_mappings = 'No'
-    aligned_ranges = '.'
+    all_ranges = '.'
 
     chrom = gmap_match['chrom']
     genome = gmap_match['genome']
@@ -226,7 +240,7 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,genomes,bed_folder_path,
 
         if(len(intersections) == 0):
             match_tsv = f'.\t.\t.\t.\t{genome}\t{chrom}\t{start}\t{end}\t{strand}\t{ident}\t{cover}\t{mult_mappings}\t'
-            return match_tsv + aligned_ranges
+            return match_tsv + all_ranges
 
         elif len(intersections) > 1:
             if(verbose == True):
@@ -239,7 +253,7 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,genomes,bed_folder_path,
             match_tsv = (
                 f'{feature[0]}\t{feature[1]}\t{feature[2]}\t{strand}\t'
                 f'{genome}\t{chrom}\t{start}\t{end}\t{strand}\t{ident}\t{cover}\t{mult_mappings}\t')
-            
+        
             if all_graph_matches == True:
                 for c in range(0,len(genomes)):
                     k = feature[c+3]
@@ -248,47 +262,49 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,genomes,bed_folder_path,
                     else:
                         clean_k = k[1:-1] #remove <>
                         if clean_k not in keys:
-                            keys[clean_k] = genomes[c]
+                            keys[clean_k] = set()
+                        keys[clean_k].add(genomes[c])
 
     except subprocess.CalledProcessError as e:
         print(f'# ERROR(get_overlap_ranges_reference): {e.cmd} failed: {e.stderr}')
 
-    # TODO:
-    # i)  all,redundant checksums should be taken, not just unique ones, and order should be conserved
-    # iia) gmap alignments should be performed for all ranges
-    # iib) gampa done only for unique ranges, but then actual genome coords must be recomputed for redundant ranges, cumbersome?
-
     # retrieve genomic ranges matching these keys,
     # multiple matches allowed to support 1toN mappings (CNVs)
     if all_graph_matches == True:
+        agc_ranges = []
         for k in keys:
-            range_bedfile = f"{bed_folder_path}/{keys[k]}.h.bed"
-            command = f"{grep_path} {k} {range_bedfile}"
-            try:
-                result = subprocess.run(command,
-                        shell=True,check=True,text=True,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE)
+            for genome in keys[k]:
+                range_bedfile = f"{bed_folder_path}/{genome}.h.bed"
+                command = f"{grep_path} {k} {range_bedfile}"
+                if verbose == True:
+                    print(f"# INFO(get_overlap_ranges_reference): grep for key {k} in {range_bedfile}")
+                try:
+                    result = subprocess.run(command,
+                            shell=True,check=True,text=True,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE)
 
-                num_bed_lines = 0
-                for b in result.stdout.splitlines():
-                    bed_data = b.split("\t")
-                    if len(bed_data) > 4:
-                        if num_bed_lines == 0:
-                            keys[k] = f'{bed_data[0]}@{keys[k]}:{bed_data[1]}-{bed_data[2]}' # agc format
-                        else:
-                            keys[k] += f' {bed_data[0]}@{keys[k]}:{bed_data[1]}-{bed_data[2]}'
-                    num_bed_lines += 1
+                    num_bed_lines = 0
+                    for b in result.stdout.splitlines():
+                        bed_data = b.split("\t")
+                        if len(bed_data) > 4:
+                            agc_range = f'{bed_data[0]}@{genome}:{bed_data[1]}-{bed_data[2]}' # agc format
+                            agc_ranges.append(agc_range)
+                        num_bed_lines += 1
 
-            except subprocess.CalledProcessError as e:
-                print(f'# ERROR(get_overlap_ranges_reference): {e.cmd} failed: {e.stderr}')
+                except subprocess.CalledProcessError as e:
+                    print(f'# ERROR(get_overlap_ranges_reference): {e.cmd} failed: {e.stderr}')
 
-        #aligned_ranges = ';'.join(sorted(keys.values())) # strand unknown, unchecked
+        # Remove duplicates and sort for consistency
+        agc_ranges = sorted(set(agc_ranges))
         aligned_ranges = align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
-                                                    gmap_match['sequence'], sorted(keys.values()),
+                                                    gmap_match['sequence'], agc_ranges,
+                                                    ranked_genomes=ranked_genomes,
                                                     verbose=verbose)
+        all_ranges = aligned_ranges 
 
-    return match_tsv + aligned_ranges
+
+    return match_tsv + all_ranges
 
 
 # %%
@@ -317,8 +333,6 @@ def sort_genomes_by_range_number(hap_table_file, verbose=False):
         pangenome_genomes.append(g)
         if verbose == True:
             print(f'# {g} {hapnum[g]}')
-
-    #pangenome_genomes = ['HOR_13942'] #debug
 
     return pangenome_genomes
 
@@ -471,10 +485,12 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_fold
                                 coverage=0.75,all_graph_matches=False,
                                 bedtools_path='bedtools',grep_path='grep',
                                 agc_path='agc', agc_db_path='', gmap_path='gmap',
+                                ranked_genomes=None,
                                 verbose=False):
     """Retrieves PHG keys for ranges overlapping gmap match in 1st matched pangenome assembly.
     BED file is usually a .h.bed file with sorted ranges extracted from PHG .h.vcf.gz files.
     Passed coverage is used to intersect ranges and match. Overlap does not consider strandness.
+    Note: If a sequence is more than once mapped in a genome, only the 1st match is used.
     Note: agc & gmap only used when all_graph_matches=True to confirm range matches.
     Returns: string with matched coords in TSV format.
     Column order in TSV: ref_chr, ref_start, ref_end, ref_strand (. if absent in ref), 
@@ -519,6 +535,7 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_fold
         if verbose == True:
             print(f"# INFO(get_overlap_ranges_pangenome): {result.stdout}")
 
+
         if(len(intersections) == 0):
             match_tsv = f'.\t.\t.\t.\t{genome}\t{chrom}\t{start}\t{end}\t{strand}\t{ident}\t{cover}\t{mult_mappings}\t'
             return match_tsv + aligned_ranges
@@ -535,6 +552,9 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_fold
                 f'{feature[6]}\t{feature[7]}\t{feature[8]}\t.\t'
                 f'{genome}\t{chrom}\t{start}\t{end}\t{strand}\t{ident}\t{cover}\t{mult_mappings}\t')
             graph_key = feature[4]
+
+        if verbose == True:
+            print(f"# INFO(get_overlap_ranges_pangenome): graph key: {graph_key}")
 
         # look for this key within graph ranges (grep)
         if all_graph_matches == True:
@@ -600,13 +620,14 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_fold
         #aligned_ranges = ';'.join(sorted(keys.values())) # strand unknown, unchecked
         aligned_ranges = align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
                                                     gmap_match['sequence'], sorted(keys.values()),
+                                                    ranked_genomes=ranked_genomes,
                                                     verbose=verbose)
 
     return match_tsv + aligned_ranges
 
 # %%
 def align_sequence_to_ranges(agc_path, agc_db_path, gmap_path, 
-                             sequence, agc_ranges, verbose=False):
+                             sequence, agc_ranges, ranked_genomes=None, verbose=False):
     """Calls agc to cut sequence of range list, which are aligned to sequence to confirm
     whether they really match (with gmap).
     Returns original list of ranges that really match the sequence with the right strand.
@@ -616,23 +637,28 @@ def align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
     """ 
     aligned_ranges = []
 
+    if verbose:
+        print(f"# INFO(align_sequence_to_ranges): agc_ranges: {agc_ranges}")
+
     # cut sequences of ranges from agc database
-    tempfp = tempfile.NamedTemporaryFile(mode='wt')
+    tempfp = tempfile.NamedTemporaryFile(mode='wt', delete=False)
     command = f"{agc_path} getctg -p {agc_db_path} {' '.join(agc_ranges)}"
     try:
         result = subprocess.run(command,
                                 shell=True, text=True,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.DEVNULL)
- 
         for line in result.stdout.splitlines():
             header = re.search(r"^>", line)
-            if header: 
+            if header:
                 line = line.replace(' ','_')
-            tempfp.write(line+"\n") 
 
+            tempfp.write(line+"\n")
+        tempfp.flush()
+        tempfp.close()
     except subprocess.CalledProcessError as e:
         print(f'# ERROR(align_sequence_to_ranges): agc failed, return unchecked ranges')
+        tempfp.close()
         return ";".join(agc_ranges)
 
     # Use gmap to align passed sequence to cut range sequence
@@ -691,6 +717,22 @@ def align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
                      
         except subprocess.CalledProcessError as e:
             print(f'# ERROR(align_sequence_to_ranges): {e.cmd} failed: {e.stderr}')
+    
+    # Sort aligned ranges according to ranked_genomes order
+    if ranked_genomes:
+        def get_rank(range_str):
+            # range_str format is typically: chr2H@GDB_136:452737005-452738007(+)
+            # extract genome: GDB_136
+            match = re.search(r"@([^:]+):", range_str)
+            if match:
+                genome = match.group(1)
+                try:
+                    return ranked_genomes.index(genome)
+                except ValueError:
+                    return 99999
+            return 99999
+
+        aligned_ranges.sort(key=get_rank)
 
     return ";".join(aligned_ranges)
 
@@ -762,8 +804,8 @@ def main():
     parser.add_argument(
         "--single_genome",
         default='',
-        help="selected genome to be scanned with GMAP, must be part of graph, default: all genomes",
-    )
+        help="selected genome to be scanned with GMAP, must be part of graph, default: all genomes. Note that --add_ranges may not work properly with this option.",
+    )   # If used together with add_ranges a warning is printed
 
     parser.add_argument(
         '--verb', 
@@ -837,6 +879,10 @@ def main():
     print(f"# add_ranges: {add_ranges}")
     print(f"# genomic: {genomic}")
 
+    if single_genome != '' and add_ranges == True:
+        print(f"# WARNING: --add_ranges may not work properly when --single_genome is used")
+        print(f"# because only ranges with exactly same haplotype are considered, not surfing throw whole pangenome\n")
+
     # order of genes to be hierarchically scanned with GMAP
     ranked_pangenome_genomes = sort_genomes_by_range_number(
         hapIDtable, 
@@ -894,6 +940,7 @@ def main():
                     agc_path=agc_exe,
                     agc_db_path=agc_db,
                     gmap_path=gmap_exe,
+                    ranked_genomes=ranked_pangenome_genomes, # <--- Added sorting parameter
                     verbose=verbose_out)
                 
             else:  
@@ -905,11 +952,12 @@ def main():
                     f'{vcf_dbs}hvcf_files/',
                     coverage=min_coverage_range/100,
                     all_graph_matches=add_ranges,
-                    bedtools_path=bedtools_exe,
-                    grep_path=grep_exe,
+                    bedtools_path=bedtools_exe, 
+                    grep_path=grep_exe, 
                     agc_path=agc_exe,
                     agc_db_path=agc_db,
                     gmap_path=gmap_exe,
+                    ranked_genomes=ranked_pangenome_genomes, # <--- Added sorting parameter
                     verbose=verbose_out)
 
             # print output coordinates and update chr names if needed
@@ -926,18 +974,5 @@ def main():
 
 # %%
 if __name__ == "__main__":
-
-    import argparse
-    import subprocess
-    import os
-    from pathlib import Path
-    import sys
-    import re
-    import tempfile
-    import uuid
-    import time
-    import yaml
-
     start_time = time.time()
-
     main()
