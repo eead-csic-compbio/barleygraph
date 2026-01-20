@@ -15,16 +15,6 @@
 # ./align2graph.py --genomic genome_fragments.fna
 
 # %%
-import argparse
-import subprocess
-import os
-from pathlib import Path
-import sys
-import re
-import tempfile
-import uuid
-import time
-import yaml
 
 def parse_fasta_file(fasta, verbose=False):
     """Takes a FASTA filename and parses sequence names before 1st space.
