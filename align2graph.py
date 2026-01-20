@@ -6,7 +6,7 @@
 # Returns reference-based coordinates of matched sequence
 #
 # J Sarria, B Contreras-Moreira
-# Copyright [2024-25] Estacion Experimental de Aula Dei-CSIC
+# Copyright [2024-26] Estacion Experimental de Aula Dei-CSIC
 
 # example calls:
 # ./align2graph.py test.fna
@@ -648,11 +648,11 @@ def align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
                                 shell=True, text=True,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.DEVNULL)
+
         for line in result.stdout.splitlines():
             header = re.search(r"^>", line)
             if header:
                 line = line.replace(' ','_')
-
             tempfp.write(line+"\n")
         tempfp.flush()
         tempfp.close()
@@ -729,8 +729,9 @@ def align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
                 try:
                     return ranked_genomes.index(genome)
                 except ValueError:
-                    return 99999
+                    return 99999    # Send it to the end if genome not found
             return 99999
+            
 
         aligned_ranges.sort(key=get_rank)
 
@@ -940,7 +941,7 @@ def main():
                     agc_path=agc_exe,
                     agc_db_path=agc_db,
                     gmap_path=gmap_exe,
-                    ranked_genomes=ranked_pangenome_genomes, # <--- Added sorting parameter
+                    ranked_genomes=ranked_pangenome_genomes,
                     verbose=verbose_out)
                 
             else:  
@@ -952,8 +953,8 @@ def main():
                     f'{vcf_dbs}hvcf_files/',
                     coverage=min_coverage_range/100,
                     all_graph_matches=add_ranges,
-                    bedtools_path=bedtools_exe, 
-                    grep_path=grep_exe, 
+                    bedtools_path=bedtools_exe,
+                    grep_path=grep_exe,
                     agc_path=agc_exe,
                     agc_db_path=agc_db,
                     gmap_path=gmap_exe,
@@ -974,5 +975,17 @@ def main():
 
 # %%
 if __name__ == "__main__":
+
+    import argparse
+    import subprocess
+    import os
+    from pathlib import Path
+    import sys
+    import re
+    import tempfile
+    import uuid
+    import time
+    import yaml
+
     start_time = time.time()
     main()
