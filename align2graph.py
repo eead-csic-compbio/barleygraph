@@ -66,8 +66,7 @@ def check_gmap_version(gmap_path):
 
         #Part of GMAP package, version 2024-11-20
         data = result.stdout.splitlines()
-        if len(data) > 2:
-            version_exe = data[2].split()[5]
+        version_exe = data[2].split()[5]
 
     except subprocess.CalledProcessError as e:
         print(f'# ERROR(check_gmap_version): {e.cmd} failed: {e.stderr}')
