@@ -66,7 +66,8 @@ def check_gmap_version(gmap_path):
 
         #Part of GMAP package, version 2024-11-20
         data = result.stdout.splitlines()
-        version_exe = data[2].split()[5]
+        if len(data) > 2:
+            version_exe = data[2].split()[5]
 
     except subprocess.CalledProcessError as e:
         print(f'# ERROR(check_gmap_version): {e.cmd} failed: {e.stderr}')
@@ -173,6 +174,26 @@ def valid_matches(gff_file, min_identity, min_coverage, verbose=False):
                                         print("#",line)
                                                
     return matches
+
+
+# %%
+def get_rank(range_str, ranked_genomes):
+    """
+    Helper function to determine the rank of a range string based on a sorted genome list.
+    range_str format is typically: chr2H@GDB_136:452737005-452738007(+)
+    """
+    if not ranked_genomes:
+        return 0
+
+    # extract genome: GDB_136
+    match = re.search(r"@([^:]+):", range_str)
+    if match:
+        genome = match.group(1)
+        try:
+            return ranked_genomes.index(genome)
+        except ValueError:
+            return 99999    # Send it to the end if genome not found in the ranked list
+    return 99999
 
 
 # %%
@@ -600,7 +621,7 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_fold
                         if num_bed_lines == 0:
                             keys[k] = f'{bed_data[0]}@{keys[k]}:{bed_data[1]}-{bed_data[2]}' # agc format, no strand
                         else:
-                            keys[k] += f' {bed_data[0]}@{keys[k]}:{bed_data[1]}-{bed_data[2]}'
+                            keys[k] += f' {bed_data[0]}@{keys[k]}:{bed_data[1]}-{bed_data[2]}' # with an space separator to distinguish multiple ranges
                     num_bed_lines += 1
 
             except subprocess.CalledProcessError as e:
@@ -637,11 +658,11 @@ def align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
                                 shell=True, text=True,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.DEVNULL)
-
         for line in result.stdout.splitlines():
             header = re.search(r"^>", line)
             if header:
                 line = line.replace(' ','_')
+
             tempfp.write(line+"\n")
         tempfp.flush()
         tempfp.close()
@@ -653,7 +674,7 @@ def align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
     # Use gmap to align passed sequence to cut range sequence
     range_names, range_seqs = parse_fasta_file(tempfp.name, verbose=verbose)
     for seqname in range_names:
-        range = ''
+        range_val = ''
         range_start = 0
         range_end = 0     
         range_strand = '+'
@@ -677,7 +698,7 @@ def align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
                 #chr4H_sampleName=HOR_21595:596316830-596388803
                 rangematch = re.search(r"(chr\d[a-zA-Z])_sampleName=([^:]+):(\d+)-(\d+)", seqname)
                 if rangematch:
-                    range = f'{rangematch.group(1)}@{rangematch.group(2)}'
+                    range_val = f'{rangematch.group(1)}@{rangematch.group(2)}'
                     range_start = int(rangematch.group(3))
                     range_end = int(rangematch.group(4))    
 
@@ -694,9 +715,9 @@ def align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
                     
                     range_start += gmap_start - 1 # 1-based
                     range_end = range_start + (gmap_end - gmap_start)
-                    range = f'{range}:{range_start}-{range_end}({range_strand})'
+                    range_val = f'{range_val}:{range_start}-{range_end}({range_strand})'
                 
-                aligned_ranges.append( range )
+                aligned_ranges.append( range_val )
                 os.remove(temp_file_name)
 
             else:
@@ -706,23 +727,10 @@ def align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
                      
         except subprocess.CalledProcessError as e:
             print(f'# ERROR(align_sequence_to_ranges): {e.cmd} failed: {e.stderr}')
-    
-    # Sort aligned ranges according to ranked_genomes order
-    if ranked_genomes:
-        def get_rank(range_str):
-            # range_str format is typically: chr2H@GDB_136:452737005-452738007(+)
-            # extract genome: GDB_136
-            match = re.search(r"@([^:]+):", range_str)
-            if match:
-                genome = match.group(1)
-                try:
-                    return ranked_genomes.index(genome)
-                except ValueError:
-                    return 99999    # Send it to the end if genome not found
-            return 99999
-            
 
-        aligned_ranges.sort(key=get_rank)
+    # Sort aligned ranges using the global get_rank function
+    if ranked_genomes:
+        aligned_ranges.sort(key=lambda x: get_rank(x, ranked_genomes))
 
     return ";".join(aligned_ranges)
 
@@ -942,12 +950,12 @@ def main():
                     f'{vcf_dbs}hvcf_files/',
                     coverage=min_coverage_range/100,
                     all_graph_matches=add_ranges,
-                    bedtools_path=bedtools_exe,
-                    grep_path=grep_exe,
+                    bedtools_path=bedtools_exe, 
+                    grep_path=grep_exe, 
                     agc_path=agc_exe,
                     agc_db_path=agc_db,
                     gmap_path=gmap_exe,
-                    ranked_genomes=ranked_pangenome_genomes, # <--- Added sorting parameter
+                    ranked_genomes=ranked_pangenome_genomes,
                     verbose=verbose_out)
 
             # print output coordinates and update chr names if needed
@@ -964,7 +972,6 @@ def main():
 
 # %%
 if __name__ == "__main__":
-
     import argparse
     import subprocess
     import os
