@@ -66,9 +66,8 @@ def check_gmap_version(gmap_path):
 
         #Part of GMAP package, version 2024-11-20
         data = result.stdout.splitlines()
-        if len(data) > 2:
-            version_exe = data[2].split()[5]
-
+        version_exe = data[2].split()[5]
+        
     except subprocess.CalledProcessError as e:
         print(f'# ERROR(check_gmap_version): {e.cmd} failed: {e.stderr}')
 
@@ -674,7 +673,7 @@ def align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
     # Use gmap to align passed sequence to cut range sequence
     range_names, range_seqs = parse_fasta_file(tempfp.name, verbose=verbose)
     for seqname in range_names:
-        range_val = ''
+        range = ''
         range_start = 0
         range_end = 0     
         range_strand = '+'
@@ -698,7 +697,7 @@ def align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
                 #chr4H_sampleName=HOR_21595:596316830-596388803
                 rangematch = re.search(r"(chr\d[a-zA-Z])_sampleName=([^:]+):(\d+)-(\d+)", seqname)
                 if rangematch:
-                    range_val = f'{rangematch.group(1)}@{rangematch.group(2)}'
+                    range = f'{rangematch.group(1)}@{rangematch.group(2)}'
                     range_start = int(rangematch.group(3))
                     range_end = int(rangematch.group(4))    
 
@@ -715,9 +714,9 @@ def align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
                     
                     range_start += gmap_start - 1 # 1-based
                     range_end = range_start + (gmap_end - gmap_start)
-                    range_val = f'{range_val}:{range_start}-{range_end}({range_strand})'
+                    range = f'{range}:{range_start}-{range_end}({range_strand})'
                 
-                aligned_ranges.append( range_val )
+                aligned_ranges.append( range )
                 os.remove(temp_file_name)
 
             else:
@@ -950,12 +949,12 @@ def main():
                     f'{vcf_dbs}hvcf_files/',
                     coverage=min_coverage_range/100,
                     all_graph_matches=add_ranges,
-                    bedtools_path=bedtools_exe, 
-                    grep_path=grep_exe, 
+                    bedtools_path=bedtools_exe,
+                    grep_path=grep_exe,
                     agc_path=agc_exe,
                     agc_db_path=agc_db,
                     gmap_path=gmap_exe,
-                    ranked_genomes=ranked_pangenome_genomes,
+                    ranked_genomes=ranked_pangenome_genomes, # <--- Added sorting parameter
                     verbose=verbose_out)
 
             # print output coordinates and update chr names if needed
@@ -972,6 +971,7 @@ def main():
 
 # %%
 if __name__ == "__main__":
+
     import argparse
     import subprocess
     import os
