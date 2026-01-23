@@ -8,17 +8,6 @@
 # J Sarria, B Contreras-Moreira
 # Copyright [2024-26] Estacion Experimental de Aula Dei-CSIC
 
-import argparse
-import subprocess
-import os
-from pathlib import Path
-import sys
-import re
-import tempfile
-import uuid
-import time
-import yaml
-
 # %%
 
 def parse_fasta_file(fasta, verbose=False):
@@ -71,9 +60,8 @@ def check_gmap_version(gmap_path):
 
         #Part of GMAP package, version 2024-11-20
         data = result.stdout.splitlines()
-        if len(data) > 2:
-            version_exe = data[2].split()[5]
-        
+        version_exe = data[2].split()[5]
+
     except subprocess.CalledProcessError as e:
         print(f'# ERROR(check_gmap_version): {e.cmd} failed: {e.stderr}')
 
@@ -135,6 +123,10 @@ def valid_matches(gff_file, min_identity, min_coverage, verbose=False):
                     fields = line.split("\t")
                     
                     if fields[2] == "mRNA":
+                    #gmap-2024-11-20
+                    #ID=query.mrna1;Name=name;Parent=genome.path1;Dir=na;coverage=100.0;identity=98.9;
+                    #gmap-2013-08-31
+                    #ID=m84096...mrna1;Name=m84096..;Parent=m84096...path1;coverage=38.1;identity=99.3
 
                         match1 = re.search(pattern1, fields[-1])
                         if match1:
@@ -300,7 +292,7 @@ def align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
         if os.path.exists(query_fp.name): os.remove(query_fp.name)
 
     # ==========================
-    # OPTION B: GMAP LOGIC (Original)
+    # OPTION B: GMAP LOGIC
     # ==========================
     else: 
         for seqname in range_names:
@@ -364,10 +356,9 @@ def align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
 
 
 # %%
-# MODIFIED: Accepts aligner_tool argument
 def get_overlap_ranges_reference(gmap_match,hapIDranges,genomes,bed_folder_path,
                                 coverage=0.75,all_graph_matches=False,
-                                aligner_tool='gmap', # <--- Added
+                                aligner_tool='gmap',
                                 bedtools_path='bedtools',grep_path='grep',
                                 agc_path='agc', agc_db_path='', gmap_path='gmap',
                                 ranked_genomes=None,
@@ -380,8 +371,7 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,genomes,bed_folder_path,
     match_genome, match_chr, match_start, match_end, match_strand, 
     match_identity,match_coverage,other_matches (Yes/No),graph_ranges."""
 
-    # keys: key -> set of genome names (to allow multiple genomes per key)
-    keys = {}
+    keys = {}   # Allows storing multiple keys 
     match_tsv = ''
     mult_mappings = 'No'
     all_ranges = '.'
@@ -474,12 +464,12 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,genomes,bed_folder_path,
                 except subprocess.CalledProcessError as e:
                     print(f'# ERROR(get_overlap_ranges_reference): {e.cmd} failed: {e.stderr}')
 
-        # Remove duplicates and sort for consistency
-        agc_ranges = sorted(set(agc_ranges))
+        # Remove duplicates)
+        agc_ranges = (set(agc_ranges))
         aligned_ranges = align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
                                                     gmap_match['sequence'], agc_ranges,
                                                     ranked_genomes=ranked_genomes,
-                                                    aligner_tool=aligner_tool, # <--- Passed here
+                                                    aligner_tool=aligner_tool,
                                                     verbose=verbose)
         all_ranges = aligned_ranges 
 
@@ -661,10 +651,9 @@ def run_gmap_genomes(pangenome_genomes, gmap_path, gmap_db, fasta_filename,
     return gmap_matches
 
 # %%
-# MODIFIED: Accepts aligner_tool argument
 def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_folder_path,
                                 coverage=0.75,all_graph_matches=False,
-                                aligner_tool='gmap', # <--- Added
+                                aligner_tool='gmap',
                                 bedtools_path='bedtools',grep_path='grep',
                                 agc_path='agc', agc_db_path='', gmap_path='gmap',
                                 ranked_genomes=None,
@@ -803,7 +792,7 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_fold
         aligned_ranges = align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
                                                     gmap_match['sequence'], sorted(keys.values()),
                                                     ranked_genomes=ranked_genomes,
-                                                    aligner_tool=aligner_tool, # <--- Passed here
+                                                    aligner_tool=aligner_tool,
                                                     verbose=verbose)
 
     return match_tsv + aligned_ranges
@@ -812,8 +801,7 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_fold
 # %%
 def main():
 
-    # hard-coded defaults
-    grep_exe = 'grep' # assumed to be available
+    grep_exe = 'grep'
 
     parser = argparse.ArgumentParser(
         description="Map sequences within pangenome graph.\n",
@@ -892,7 +880,7 @@ def main():
         help='Input sequences are genomic, turn off splicing'
     )
     
-    # MODIFIED: Changed from action='store_true' to type=str with choices
+    # MODIFIED: Now is not a flag, but a choice of tool
     parser.add_argument('--add_ranges', 
         type=str,
         choices=['gmap', 'minimap2'],
@@ -939,7 +927,7 @@ def main():
     verbose_out   = args.verb
     genomic       = args.genomic
     
-    # MODIFIED: Logic for add_ranges
+    # Logic for add_ranges
     aligner_tool  = args.add_ranges
     do_add_ranges = (aligner_tool is not None)
     
@@ -1055,5 +1043,17 @@ def main():
 
 # %%
 if __name__ == "__main__":
+
+    import argparse
+    import subprocess
+    import os
+    from pathlib import Path
+    import sys
+    import re
+    import tempfile
+    import uuid
+    import time
+    import yaml
+
     start_time = time.time()
     main()
