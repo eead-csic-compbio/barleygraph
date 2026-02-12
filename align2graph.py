@@ -825,8 +825,6 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_fold
 # %%
 def main():
 
-    grep_exe = 'grep'
-
     parser = argparse.ArgumentParser(
         description="Map sequences within pangenome graph.\n",
         epilog="Citation: see https://github.com/eead-csic-compbio/barleygraph\n",
@@ -913,14 +911,14 @@ def main():
 
     args = parser.parse_args()
 
-    # Sequential execution
-    process_sequences(args)
+    # Sequential execution for now, parallelization could be implemented later if needed
+    process_sequences_serial(args)
 
 
-def process_sequences(args):
+def process_sequences_serial(args):
     """Main processing logic for sequences (called by main or parallel workers)"""
     
-    grep_exe = 'grep' # Its suposed to be accesible
+    grep_exe = 'grep' # supposed to be available in PATH
     
     # required params
     fasta_file = args.fasta_file
