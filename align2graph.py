@@ -457,8 +457,19 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,genomes,bed_folder_path,
                     for b in result.stdout.splitlines():
                         bed_data = b.split("\t")
                         if len(bed_data) > 4:
-                            agc_range = f'{bed_data[0]}@{genome}:{bed_data[1]}-{bed_data[2]}' # agc format
+                            # Calculate 5% padding on each side. On genomic regions, UTRs from other genomes may be shorter than the sequence in other ranges, so adding padding on both sides to avoid cropping the end/start of a gene when add_ranges
+                            start = int(bed_data[1])
+                            end = int(bed_data[2])
+                            block_length = end - start
+                            padding = int(block_length * 0.05)
+                            padding = max(padding, 1000)  # Use at least 500bp padding
+                            # For short ranges 5% is not enough, so ensure always to use at least 500bp
+                            padded_start = max(0, start - padding)  # Ensure non-negative
+                            padded_end = end + padding
+                            agc_range = f'{bed_data[0]}@{genome}:{padded_start}-{padded_end}' # agc format with 5% padding (>500bp)
                             agc_ranges.append(agc_range)
+                            if verbose == True:
+                                print(f"# INFO(get_overlap_ranges_reference): key {k} -> {bed_data[0]}:{start}-{end} + padding ({padding}bp) = {padded_start}-{padded_end}")
                         num_bed_lines += 1
 
                 except subprocess.CalledProcessError as e:
@@ -662,7 +673,7 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_fold
     BED file is usually a .h.bed file with sorted ranges extracted from PHG .h.vcf.gz files.
     Passed coverage is used to intersect ranges and match. Overlap does not consider strandness.
     Note: If a sequence is more than once mapped in a genome, only the 1st match is used.
-    Note: agc & gmap only used when all_graph_matches=True to confirm range matches.
+    Note: agc & gmap only used when all_graph_matches=True to confirm range matches. # Now this should not be true
     Returns: string with matched coords in TSV format.
     Column order in TSV: ref_chr, ref_start, ref_end, ref_strand (. if absent in ref), 
     match_genome, match_chr, match_start, match_end, match_strand, 
@@ -690,7 +701,7 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_fold
     # prepare bedtools intersect command to find overlapping range, no strand check,
     # see also https://github.com/arq5x/bedtools2/issues/679,
     # bedfile should contain lines like this:
-    # chr1H_OX460222.1 1 69 + 9c51... HOR_12184 chr1H_LR890096.1 9 66 21c7...
+    # chr1H	975076	975705	+	3e9613a955ec342330fd2138f652fddc	HOR_13942	chr1H	76744	77373	35451ad1b65dd5ff4d940f914c21dbe1
     command = f"{bedtools_path} intersect -a {bedfile} -b stdin -nonamecheck -e -F {coverage} -f {coverage} -sorted "
 
     # BED-format interval of gmap match
@@ -779,11 +790,24 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_fold
                 for b in result.stdout.splitlines():
                     bed_data = b.split("\t")
                     if len(bed_data) > 4:
+                        # Calculate 5% padding on each side
+                        # At some cases, matches from other genomes may be shorter than the sequence in other ranges, so adding padding on 
+                        # both sides to avoid cropping the end/start of a gene when add_ranges
+                        start = int(bed_data[1])
+                        end = int(bed_data[2])
+                        block_length = end - start
+                        padding = int(block_length * 0.05)
+                        padded_start = max(0, start - padding)  # Ensure non-negative
+                        padded_end = end + padding
+                        padded_range = f'{bed_data[0]}@{keys[k]}:{padded_start}-{padded_end}' # agc format with 5% padding
                         if num_bed_lines == 0:
-                            keys[k] = f'{bed_data[0]}@{keys[k]}:{bed_data[1]}-{bed_data[2]}' # agc format, no strand
+                            keys[k] = padded_range
                         else:
-                            keys[k] += f' {bed_data[0]}@{keys[k]}:{bed_data[1]}-{bed_data[2]}' # with an space separator to distinguish multiple ranges
+                            keys[k] += f' {padded_range}' # with a space separator to distinguish multiple ranges
                     num_bed_lines += 1
+
+                    if verbose == True:
+                        print(f"# INFO(get_overlap_ranges_pangenome): found range for key {k}: {bed_data[0]}:{start}-{end} with padding {padded_start}-{padded_end}")
 
             except subprocess.CalledProcessError as e:
                 print(f'# ERROR(get_overlap_ranges_pangenome): {e.cmd} failed: {e.stderr}')
@@ -889,6 +913,15 @@ def main():
 
     args = parser.parse_args()
 
+    # Sequential execution
+    process_sequences(args)
+
+
+def process_sequences(args):
+    """Main processing logic for sequences (called by main or parallel workers)"""
+    
+    grep_exe = 'grep' # Its suposed to be accesible
+    
     # required params
     fasta_file = args.fasta_file
 
@@ -903,13 +936,13 @@ def main():
         with f:        
             config = yaml.load(f, Loader=yaml.FullLoader)
 
-            vcf_dbs = config['vcf_dbs']
+            hvcf_bed = config['hvcf_bed']
+            agc_db = config['agc_assemblies']            
             gmap_db = config['gmap_db']
             reference_name = config['reference_name']
             hapIDtable  = config['hapIDtable']
             hapIDranges = config['hapIDranges']
             gmap_exe = config['gmap_exe']
-            agc_db = f'{vcf_dbs}/assemblies.agc'
 
             if 'chr_syns' in config:
                 # if chr_syns is present, it is a dictionary with chromosome synonyms
@@ -948,7 +981,7 @@ def main():
 
     if single_genome != '' and do_add_ranges:
         print(f"# WARNING: --add_ranges may not work properly when --single_genome is used")
-        print(f"# because only ranges with exactly same haplotype are considered, not surfing throw whole pangenome\n")
+        print(f"# because only ranges with exactly same haplotype are considered, not surfing through whole pangenome\n")
 
     # order of genes to be hierarchically scanned with GMAP
     ranked_pangenome_genomes = sort_genomes_by_range_number(
@@ -999,10 +1032,10 @@ def main():
                     gmap_matches[seqname], 
                     hapIDranges,
                     graph_pangenome_genomes, 
-                    f'{vcf_dbs}hvcf_files/', 
+                    hvcf_bed, # --- CHANGED --- 
                     coverage=min_coverage_range/100,
-                    all_graph_matches=do_add_ranges, # Pass boolean
-                    aligner_tool=aligner_tool,       # Pass tool name
+                    all_graph_matches=do_add_ranges, 
+                    aligner_tool=aligner_tool,       
                     bedtools_path=bedtools_exe, 
                     grep_path=grep_exe, 
                     agc_path=agc_exe,
@@ -1016,11 +1049,11 @@ def main():
                     gmap_matches[seqname],
                     hapIDranges,
                     graph_pangenome_genomes,
-                    f"{vcf_dbs}hvcf_files/{gmap_matches[seqname]['genome']}.h.bed",
-                    f'{vcf_dbs}hvcf_files/',
+                    f"{hvcf_bed}/{gmap_matches[seqname]['genome']}.h.bed", # --- CHANGED ---
+                    hvcf_bed, # --- CHANGED ---
                     coverage=min_coverage_range/100,
-                    all_graph_matches=do_add_ranges, # Pass boolean
-                    aligner_tool=aligner_tool,       # Pass tool name
+                    all_graph_matches=do_add_ranges, 
+                    aligner_tool=aligner_tool,       
                     bedtools_path=bedtools_exe,
                     grep_path=grep_exe,
                     agc_path=agc_exe,
@@ -1054,6 +1087,7 @@ if __name__ == "__main__":
     import uuid
     import time
     import yaml
+
 
     start_time = time.time()
     main()
