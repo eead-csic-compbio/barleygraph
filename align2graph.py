@@ -8,12 +8,6 @@
 # J Sarria, B Contreras-Moreira
 # Copyright [2024-26] Estacion Experimental de Aula Dei-CSIC
 
-# example calls:
-# ./align2graph.py test.fna
-# ./align2graph.py --add_ranges --graph_yaml Pan20.yaml test.fna
-# ./align2graph.py --verb --add_ranges test.fna
-# ./align2graph.py --genomic genome_fragments.fna
-
 # %%
 
 def parse_fasta_file(fasta, verbose=False):
@@ -67,7 +61,7 @@ def check_gmap_version(gmap_path):
         #Part of GMAP package, version 2024-11-20
         data = result.stdout.splitlines()
         version_exe = data[2].split()[5]
-        
+
     except subprocess.CalledProcessError as e:
         print(f'# ERROR(check_gmap_version): {e.cmd} failed: {e.stderr}')
 
@@ -128,12 +122,11 @@ def valid_matches(gff_file, min_identity, min_coverage, verbose=False):
                              
                     fields = line.split("\t")
                     
+                    if fields[2] == "mRNA":
                     #gmap-2024-11-20
                     #ID=query.mrna1;Name=name;Parent=genome.path1;Dir=na;coverage=100.0;identity=98.9;
                     #gmap-2013-08-31
                     #ID=m84096...mrna1;Name=m84096..;Parent=m84096...path1;coverage=38.1;identity=99.3
-
-                    if fields[2] == "mRNA":
 
                         match1 = re.search(pattern1, fields[-1])
                         if match1:
@@ -196,8 +189,176 @@ def get_rank(range_str, ranked_genomes):
 
 
 # %%
+def align_sequence_to_ranges(agc_path, agc_db_path, gmap_path, 
+                             sequence, agc_ranges, ranked_genomes=None, 
+                             aligner_tool='gmap', verbose=False):
+    """
+    Calls agc to cut sequence of range list.
+    Then aligns sequence to these ranges using either GMAP (pairwise) or Minimap2 (splice).
+    """ 
+    aligned_ranges = []
+    minimap2_exe = "/scratch/software-phgv2/miniconda3/envs/align2graph_env/bin/minimap2" 
+
+    if verbose:
+        print(f"# INFO(align_sequence_to_ranges): agc_ranges: {agc_ranges} using {aligner_tool}")
+
+    # --- Step 1: Extract sequences from AGC ---
+    tempfp = tempfile.NamedTemporaryFile(mode='wt', delete=False)
+    command = f"{agc_path} getctg -p {agc_db_path} {' '.join(agc_ranges)}"
+    try:
+        result = subprocess.run(command,
+                                shell=True, text=True,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.DEVNULL)
+        for line in result.stdout.splitlines():
+            header = re.search(r"^>", line)
+            if header:
+                line = line.replace(' ','_')
+            tempfp.write(line+"\n")
+        tempfp.flush()
+        tempfp.close()
+    except subprocess.CalledProcessError as e:
+        print(f'# ERROR(align_sequence_to_ranges): agc failed, return unchecked ranges')
+        tempfp.close()
+        return ";".join(agc_ranges)
+
+    # --- Step 2: Align using selected tool ---
+    range_names, range_seqs = parse_fasta_file(tempfp.name, verbose=verbose)
+
+    # ==========================
+    # OPTION A: MINIMAP2 LOGIC
+    # ==========================
+    if aligner_tool == 'minimap2':
+        
+        # Create a query file
+        query_fp = tempfile.NamedTemporaryFile(mode='wt', delete=False, suffix=".fa")
+        query_fp.write(f">query\n{sequence}\n")
+        query_fp.close()
+
+        for seqname in range_names:
+            # Create a temp file for the Reference block
+            ref_fp = tempfile.NamedTemporaryFile(mode='wt', delete=False, suffix=".fa")
+            ref_fp.write(f">{seqname}\n{range_seqs[seqname]}\n")
+            ref_fp.close()
+
+            # Run Minimap2
+            command = [minimap2_exe, "-ax", "splice", "--secondary=no", ref_fp.name, query_fp.name]
+            
+            try: 
+                result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+                
+                if verbose:
+                    print(f"# INFO(align_sequence_to_ranges): minimap2 finished for {seqname}")
+
+                # Parse SAM Output
+                for line in result.stdout.splitlines():
+                    if line.startswith("@"): continue
+                    
+                    cols = line.split("\t")
+                    if len(cols) < 6: continue
+                    
+                    flag = int(cols[1])
+                    if flag & 4: continue # Unmapped
+                    
+                    ref_name = cols[2]
+                    pos = int(cols[3])
+                    cigar = cols[5]
+                    
+                    # Calculate alignment length on reference from CIGAR
+                    ref_len = 0
+                    for length, op in re.findall(r"(\d+)([MIDNSHP=X])", cigar):
+                        if op in "MDN=X":
+                            ref_len += int(length)
+                    
+                    # Parse Header and Calculate Global Coords
+                    rangematch = re.search(r"(chr\d[a-zA-Z])_sampleName=([^:]+):(\d+)-(\d+)", seqname)
+                    if rangematch:
+                        contig = rangematch.group(1)
+                        genome = rangematch.group(2)
+                        chunk_start = int(rangematch.group(3))
+                        
+                        final_start = chunk_start + pos - 1
+                        final_end = final_start + ref_len - 1
+                        strand = '-' if (flag & 16) else '+'
+                        
+                        range_str = f'{contig}@{genome}:{final_start}-{final_end}({strand})'
+                        aligned_ranges.append(range_str)
+
+            except subprocess.CalledProcessError:
+                print(f'# ERROR(align_sequence_to_ranges): minimap2 failed')
+
+            if os.path.exists(ref_fp.name): os.remove(ref_fp.name)
+        
+        if os.path.exists(query_fp.name): os.remove(query_fp.name)
+
+    # ==========================
+    # OPTION B: GMAP LOGIC
+    # ==========================
+    else: 
+        for seqname in range_names:
+            range_str = '' 
+            range_start = 0
+            range_end = 0     
+            range_strand = '+'
+
+            temp_file_name = write_temp_fasta_file([seqname,'query'], 
+                                                {seqname:range_seqs[seqname], 'query':sequence})
+
+            command = f"cat {temp_file_name} | {gmap_path} -t 1 -n 1 -2"
+            try: 
+                result = subprocess.run(command,
+                                    shell=True, check=True, text=True,
+                                    stdout=subprocess.PIPE, 
+                                    stderr=subprocess.DEVNULL)
+
+                if verbose == True:
+                    print(f"# INFO(align_sequence_to_ranges): gmap result for {seqname}:\n{result.stdout}")
+
+                paths = re.search(r"Paths \([123456789]+", result.stdout)
+                if paths:
+                    rangematch = re.search(r"(chr\d[a-zA-Z])_sampleName=([^:]+):(\d+)-(\d+)", seqname)
+                    if rangematch:
+                        range_str = f'{rangematch.group(1)}@{rangematch.group(2)}'
+                        range_start = int(rangematch.group(3))
+                        range_end = int(rangematch.group(4))    
+
+                    match = re.search(r"Genomic pos: ([\d,]+)..([\d,]+) \(([+-])", result.stdout)
+                    if match:
+                        gmap_start = int(match.group(1).replace(',',''))
+                        gmap_end = int(match.group(2).replace(',',''))
+                        gmap_strand = match.group(3)
+                        if gmap_strand == '-':
+                            range_strand = '-'
+                            gmap_start, gmap_end = gmap_end, gmap_start 
+                        
+                        range_start += gmap_start - 1 
+                        range_end = range_start + (gmap_end - gmap_start)
+                        range_str = f'{range_str}:{range_start}-{range_end}({range_strand})'
+                    
+                    aligned_ranges.append(range_str)
+                    os.remove(temp_file_name)
+
+                else:
+                    os.remove(temp_file_name)
+                    if verbose == True:
+                        print(f"# INFO(align_sequence_to_ranges): no valid alignment for {seqname}")
+                        
+            except subprocess.CalledProcessError as e:
+                print(f'# ERROR(align_sequence_to_ranges): {e.cmd} failed: {e.stderr}')
+
+    if os.path.exists(tempfp.name): os.remove(tempfp.name)
+
+    # Sort aligned ranges using the global get_rank function
+    if ranked_genomes:
+        aligned_ranges.sort(key=lambda x: get_rank(x, ranked_genomes))
+
+    return ";".join(aligned_ranges)
+
+
+# %%
 def get_overlap_ranges_reference(gmap_match,hapIDranges,genomes,bed_folder_path,
                                 coverage=0.75,all_graph_matches=False,
+                                aligner_tool='gmap',
                                 bedtools_path='bedtools',grep_path='grep',
                                 agc_path='agc', agc_db_path='', gmap_path='gmap',
                                 ranked_genomes=None,
@@ -210,8 +371,7 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,genomes,bed_folder_path,
     match_genome, match_chr, match_start, match_end, match_strand, 
     match_identity,match_coverage,other_matches (Yes/No),graph_ranges."""
 
-    # keys: key -> set of genome names (to allow multiple genomes per key)
-    keys = {}
+    keys = {}   # Allows storing multiple keys 
     match_tsv = ''
     mult_mappings = 'No'
     all_ranges = '.'
@@ -297,18 +457,30 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,genomes,bed_folder_path,
                     for b in result.stdout.splitlines():
                         bed_data = b.split("\t")
                         if len(bed_data) > 4:
-                            agc_range = f'{bed_data[0]}@{genome}:{bed_data[1]}-{bed_data[2]}' # agc format
+                            # Calculate 5% padding on each side. On genomic regions, UTRs from other genomes may be shorter than the sequence in other ranges, so adding padding on both sides to avoid cropping the end/start of a gene when add_ranges
+                            start = int(bed_data[1])
+                            end = int(bed_data[2])
+                            block_length = end - start
+                            padding = int(block_length * 0.05)
+                            padding = max(padding, 1000)  # Use at least 500bp padding
+                            # For short ranges 5% is not enough, so ensure always to use at least 500bp
+                            padded_start = max(0, start - padding)  # Ensure non-negative
+                            padded_end = end + padding
+                            agc_range = f'{bed_data[0]}@{genome}:{padded_start}-{padded_end}' # agc format with 5% padding (>500bp)
                             agc_ranges.append(agc_range)
+                            if verbose == True:
+                                print(f"# INFO(get_overlap_ranges_reference): key {k} -> {bed_data[0]}:{start}-{end} + padding ({padding}bp) = {padded_start}-{padded_end}")
                         num_bed_lines += 1
 
                 except subprocess.CalledProcessError as e:
                     print(f'# ERROR(get_overlap_ranges_reference): {e.cmd} failed: {e.stderr}')
 
-        # Remove duplicates and sort for consistency
-        agc_ranges = sorted(set(agc_ranges))
+        # Remove duplicates)
+        agc_ranges = (set(agc_ranges))
         aligned_ranges = align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
                                                     gmap_match['sequence'], agc_ranges,
                                                     ranked_genomes=ranked_genomes,
+                                                    aligner_tool=aligner_tool,
                                                     verbose=verbose)
         all_ranges = aligned_ranges 
 
@@ -492,6 +664,7 @@ def run_gmap_genomes(pangenome_genomes, gmap_path, gmap_db, fasta_filename,
 # %%
 def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_folder_path,
                                 coverage=0.75,all_graph_matches=False,
+                                aligner_tool='gmap',
                                 bedtools_path='bedtools',grep_path='grep',
                                 agc_path='agc', agc_db_path='', gmap_path='gmap',
                                 ranked_genomes=None,
@@ -500,7 +673,7 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_fold
     BED file is usually a .h.bed file with sorted ranges extracted from PHG .h.vcf.gz files.
     Passed coverage is used to intersect ranges and match. Overlap does not consider strandness.
     Note: If a sequence is more than once mapped in a genome, only the 1st match is used.
-    Note: agc & gmap only used when all_graph_matches=True to confirm range matches.
+    Note: agc & gmap only used when all_graph_matches=True to confirm range matches. # Now this should not be true
     Returns: string with matched coords in TSV format.
     Column order in TSV: ref_chr, ref_start, ref_end, ref_strand (. if absent in ref), 
     match_genome, match_chr, match_start, match_end, match_strand, 
@@ -528,7 +701,7 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_fold
     # prepare bedtools intersect command to find overlapping range, no strand check,
     # see also https://github.com/arq5x/bedtools2/issues/679,
     # bedfile should contain lines like this:
-    # chr1H_OX460222.1 1 69 + 9c51... HOR_12184 chr1H_LR890096.1 9 66 21c7...
+    # chr1H	975076	975705	+	3e9613a955ec342330fd2138f652fddc	HOR_13942	chr1H	76744	77373	35451ad1b65dd5ff4d940f914c21dbe1
     command = f"{bedtools_path} intersect -a {bedfile} -b stdin -nonamecheck -e -F {coverage} -f {coverage} -sorted "
 
     # BED-format interval of gmap match
@@ -617,11 +790,24 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_fold
                 for b in result.stdout.splitlines():
                     bed_data = b.split("\t")
                     if len(bed_data) > 4:
+                        # Calculate 5% padding on each side
+                        # At some cases, matches from other genomes may be shorter than the sequence in other ranges, so adding padding on 
+                        # both sides to avoid cropping the end/start of a gene when add_ranges
+                        start = int(bed_data[1])
+                        end = int(bed_data[2])
+                        block_length = end - start
+                        padding = int(block_length * 0.05)
+                        padded_start = max(0, start - padding)  # Ensure non-negative
+                        padded_end = end + padding
+                        padded_range = f'{bed_data[0]}@{keys[k]}:{padded_start}-{padded_end}' # agc format with 5% padding
                         if num_bed_lines == 0:
-                            keys[k] = f'{bed_data[0]}@{keys[k]}:{bed_data[1]}-{bed_data[2]}' # agc format, no strand
+                            keys[k] = padded_range
                         else:
-                            keys[k] += f' {bed_data[0]}@{keys[k]}:{bed_data[1]}-{bed_data[2]}' # with an space separator to distinguish multiple ranges
+                            keys[k] += f' {padded_range}' # with a space separator to distinguish multiple ranges
                     num_bed_lines += 1
+
+                    if verbose == True:
+                        print(f"# INFO(get_overlap_ranges_pangenome): found range for key {k}: {bed_data[0]}:{start}-{end} with padding {padded_start}-{padded_end}")
 
             except subprocess.CalledProcessError as e:
                 print(f'# ERROR(get_overlap_ranges_pangenome): {e.cmd} failed: {e.stderr}')
@@ -630,114 +816,16 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_fold
         aligned_ranges = align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
                                                     gmap_match['sequence'], sorted(keys.values()),
                                                     ranked_genomes=ranked_genomes,
+                                                    aligner_tool=aligner_tool,
                                                     verbose=verbose)
 
     return match_tsv + aligned_ranges
 
-# %%
-def align_sequence_to_ranges(agc_path, agc_db_path, gmap_path, 
-                             sequence, agc_ranges, ranked_genomes=None, verbose=False):
-    """Calls agc to cut sequence of range list, which are aligned to sequence to confirm
-    whether they really match (with gmap).
-    Returns original list of ranges that really match the sequence with the right strand.
-    # chr4H@HOR_10892:604321682-604389456;...;chr4H@HOR_12184:596537511-596551445;
-    # becomes
-    # chr4H@HOR_10892:604321682-604389456;chr4H@HOR_12184:596537511-596551445
-    """ 
-    aligned_ranges = []
-
-    if verbose:
-        print(f"# INFO(align_sequence_to_ranges): agc_ranges: {agc_ranges}")
-
-    # cut sequences of ranges from agc database
-    tempfp = tempfile.NamedTemporaryFile(mode='wt', delete=False)
-    command = f"{agc_path} getctg -p {agc_db_path} {' '.join(agc_ranges)}"
-    try:
-        result = subprocess.run(command,
-                                shell=True, text=True,
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.DEVNULL)
-        for line in result.stdout.splitlines():
-            header = re.search(r"^>", line)
-            if header:
-                line = line.replace(' ','_')
-
-            tempfp.write(line+"\n")
-        tempfp.flush()
-        tempfp.close()
-    except subprocess.CalledProcessError as e:
-        print(f'# ERROR(align_sequence_to_ranges): agc failed, return unchecked ranges')
-        tempfp.close()
-        return ";".join(agc_ranges)
-
-    # Use gmap to align passed sequence to cut range sequence
-    range_names, range_seqs = parse_fasta_file(tempfp.name, verbose=verbose)
-    for seqname in range_names:
-        range = ''
-        range_start = 0
-        range_end = 0     
-        range_strand = '+'
-
-        temp_file_name = write_temp_fasta_file([seqname,'query'], 
-                                               {seqname:range_seqs[seqname], 'query':sequence})
-
-        command = f"cat {temp_file_name} | {gmap_path} -t 1 -n 1 -2"
-        try: 
-            result = subprocess.run(command,
-                                shell=True, check=True, text=True,
-                                stdout=subprocess.PIPE, 
-                                stderr=subprocess.DEVNULL)
-
-            # check if there is a valid alignment path and refine coordinates
-            if verbose == True:
-                print(f"# INFO(align_sequence_to_ranges): gmap result for {seqname}:\n{result.stdout}")
-
-            paths = re.search(r"Paths \([123456789]+", result.stdout)
-            if paths:
-                #chr4H_sampleName=HOR_21595:596316830-596388803
-                rangematch = re.search(r"(chr\d[a-zA-Z])_sampleName=([^:]+):(\d+)-(\d+)", seqname)
-                if rangematch:
-                    range = f'{rangematch.group(1)}@{rangematch.group(2)}'
-                    range_start = int(rangematch.group(3))
-                    range_end = int(rangematch.group(4))    
-
-                #Genomic pos: 50,113..48,450 (- strand)
-                #Genomic pos: 21,675..23,339 (+ strand)
-                match = re.search(r"Genomic pos: ([\d,]+)..([\d,]+) \(([+-])", result.stdout)
-                if match:
-                    gmap_start = int(match.group(1).replace(',',''))
-                    gmap_end = int(match.group(2).replace(',',''))
-                    gmap_strand = match.group(3)
-                    if gmap_strand == '-':
-                        range_strand = '-'
-                        gmap_start, gmap_end = gmap_end, gmap_start 
-                    
-                    range_start += gmap_start - 1 # 1-based
-                    range_end = range_start + (gmap_end - gmap_start)
-                    range = f'{range}:{range_start}-{range_end}({range_strand})'
-                
-                aligned_ranges.append( range )
-                os.remove(temp_file_name)
-
-            else:
-                os.remove(temp_file_name)
-                if verbose == True:
-                    print(f"# INFO(align_sequence_to_ranges): no valid alignment for {seqname}")
-                     
-        except subprocess.CalledProcessError as e:
-            print(f'# ERROR(align_sequence_to_ranges): {e.cmd} failed: {e.stderr}')
-
-    # Sort aligned ranges using the global get_rank function
-    if ranked_genomes:
-        aligned_ranges.sort(key=lambda x: get_rank(x, ranked_genomes))
-
-    return ";".join(aligned_ranges)
 
 # %%
 def main():
 
-    # hard-coded defaults
-    grep_exe = 'grep' # assumed to be available
+    grep_exe = 'grep'
 
     parser = argparse.ArgumentParser(
         description="Map sequences within pangenome graph.\n",
@@ -816,13 +904,24 @@ def main():
         help='Input sequences are genomic, turn off splicing'
     )
     
+    # MODIFIED: Now is not a flag, but a choice of tool
     parser.add_argument('--add_ranges', 
-        action='store_true', 
-        help='Add all pangenome ranges matching input sequences'
+        type=str,
+        choices=['gmap', 'minimap2'],
+        help='Add all pangenome ranges matching input sequences using specified tool (gmap or minimap2)'
     )
 
     args = parser.parse_args()
 
+    # Sequential execution
+    process_sequences(args)
+
+
+def process_sequences(args):
+    """Main processing logic for sequences (called by main or parallel workers)"""
+    
+    grep_exe = 'grep' # Its suposed to be accesible
+    
     # required params
     fasta_file = args.fasta_file
 
@@ -837,13 +936,13 @@ def main():
         with f:        
             config = yaml.load(f, Loader=yaml.FullLoader)
 
-            vcf_dbs = config['vcf_dbs']
+            hvcf_bed = config['hvcf_bed']
+            agc_db = config['agc_assemblies']            
             gmap_db = config['gmap_db']
             reference_name = config['reference_name']
             hapIDtable  = config['hapIDtable']
             hapIDranges = config['hapIDranges']
             gmap_exe = config['gmap_exe']
-            agc_db = f'{vcf_dbs}/assemblies.agc'
 
             if 'chr_syns' in config:
                 # if chr_syns is present, it is a dictionary with chromosome synonyms
@@ -860,7 +959,11 @@ def main():
     temp_path     = args.tmp_path
     verbose_out   = args.verb
     genomic       = args.genomic
-    add_ranges    = args.add_ranges
+    
+    # Logic for add_ranges
+    aligner_tool  = args.add_ranges
+    do_add_ranges = (aligner_tool is not None)
+    
     single_genome = args.single_genome
 
     ######################################################
@@ -873,12 +976,12 @@ def main():
     print(f"# minimum identity %: {min_identity}")
     print(f"# minimum coverage %: {min_coverage}")
     print(f"# minimum coverage range %: {min_coverage_range}")
-    print(f"# add_ranges: {add_ranges}")
+    print(f"# add_ranges: {do_add_ranges} (Tool: {aligner_tool if do_add_ranges else 'None'})")
     print(f"# genomic: {genomic}")
 
-    if single_genome != '' and add_ranges == True:
+    if single_genome != '' and do_add_ranges:
         print(f"# WARNING: --add_ranges may not work properly when --single_genome is used")
-        print(f"# because only ranges with exactly same haplotype are considered, not surfing throw whole pangenome\n")
+        print(f"# because only ranges with exactly same haplotype are considered, not surfing through whole pangenome\n")
 
     # order of genes to be hierarchically scanned with GMAP
     ranked_pangenome_genomes = sort_genomes_by_range_number(
@@ -929,9 +1032,10 @@ def main():
                     gmap_matches[seqname], 
                     hapIDranges,
                     graph_pangenome_genomes, 
-                    f'{vcf_dbs}hvcf_files/', 
+                    hvcf_bed, # --- CHANGED --- 
                     coverage=min_coverage_range/100,
-                    all_graph_matches=add_ranges,
+                    all_graph_matches=do_add_ranges, 
+                    aligner_tool=aligner_tool,       
                     bedtools_path=bedtools_exe, 
                     grep_path=grep_exe, 
                     agc_path=agc_exe,
@@ -945,16 +1049,17 @@ def main():
                     gmap_matches[seqname],
                     hapIDranges,
                     graph_pangenome_genomes,
-                    f"{vcf_dbs}hvcf_files/{gmap_matches[seqname]['genome']}.h.bed",
-                    f'{vcf_dbs}hvcf_files/',
+                    f"{hvcf_bed}/{gmap_matches[seqname]['genome']}.h.bed", # --- CHANGED ---
+                    hvcf_bed, # --- CHANGED ---
                     coverage=min_coverage_range/100,
-                    all_graph_matches=add_ranges,
+                    all_graph_matches=do_add_ranges, 
+                    aligner_tool=aligner_tool,       
                     bedtools_path=bedtools_exe,
                     grep_path=grep_exe,
                     agc_path=agc_exe,
                     agc_db_path=agc_db,
                     gmap_path=gmap_exe,
-                    ranked_genomes=ranked_pangenome_genomes, # <--- Added sorting parameter
+                    ranked_genomes=ranked_pangenome_genomes, 
                     verbose=verbose_out)
 
             # print output coordinates and update chr names if needed
@@ -982,6 +1087,7 @@ if __name__ == "__main__":
     import uuid
     import time
     import yaml
+
 
     start_time = time.time()
     main()
