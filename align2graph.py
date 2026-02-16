@@ -81,7 +81,7 @@ def write_temp_fasta_file(names, seqs, prefix_string="temp",
     with tempfile.NamedTemporaryFile(prefix=prefix_string,suffix=suffix_string,
                                      dir=temp_path,delete=False) as temp:
         for name in names:
-            temp.write(b">" + name.encode() + b"\n" + seqs[name].encode()) 
+            temp.write(b">" + name.encode() + b"\n" + seqs[name].encode() + b"\n") 
         temp.close()
 
     file_path = Path(temp.name)
@@ -191,61 +191,59 @@ def get_rank(range_str, ranked_genomes):
 # %%
 def align_sequence_to_ranges(agc_path, agc_db_path, gmap_path, 
                              sequence, agc_ranges, ranked_genomes=None, 
-                             aligner_tool='gmap', verbose=False):
+                             aligner_tool='gmap', minimap2_path='minimap2', 
+                             verbose=False):
     """
-    Calls agc to cut sequence of range list.
-    Then aligns sequence to these ranges using either GMAP (pairwise) or Minimap2 (splice).
-    """ 
-    aligned_ranges = []
-    minimap2_exe = "/scratch/software-phgv2/miniconda3/envs/align2graph_env/bin/minimap2" 
+    Calls agc to cut genome fragments corresponding to list of ranges in appropriate agc format.
+    Then aligns input sequence to these ranges using either GMAP (pairwise) or Minimap2 (splice).
+    Returns alignment-corrected ranges in CSV string.
+    """
+
+    aligned_ranges  = []
+    range_seqnames  = []
+    range_sequences = {}
+    name = ''
+    seq  = ''
 
     if verbose:
         print(f"# INFO(align_sequence_to_ranges): agc_ranges: {agc_ranges} using {aligner_tool}")
 
-    # --- Step 1: Extract sequences from AGC ---
-    tempfp = tempfile.NamedTemporaryFile(mode='wt', delete=False)
+    # --- Step 1: Cut sequences from AGC database and save in temp file ---
     command = f"{agc_path} getctg -p {agc_db_path} {' '.join(agc_ranges)}"
     try:
         result = subprocess.run(command,
-                                shell=True, text=True,
+                                shell=True, check=True, text=True, 
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.DEVNULL)
+
         for line in result.stdout.splitlines():
             header = re.search(r"^>", line)
             if header:
-                line = line.replace(' ','_')
-            tempfp.write(line+"\n")
-        tempfp.flush()
-        tempfp.close()
+                name = line.replace('>','')
+                name = name.replace(' ','_')
+                range_seqnames.append(name)
+                range_sequences[name] = ''
+            else:
+                range_sequences[name] = range_sequences[name] + line    
+
     except subprocess.CalledProcessError as e:
         print(f'# ERROR(align_sequence_to_ranges): agc failed, return unchecked ranges')
-        tempfp.close()
         return ";".join(agc_ranges)
 
     # --- Step 2: Align using selected tool ---
-    range_names, range_seqs = parse_fasta_file(tempfp.name, verbose=verbose)
-
-    # ==========================
-    # OPTION A: MINIMAP2 LOGIC
-    # ==========================
-    if aligner_tool == 'minimap2':
+    if aligner_tool == 'minimap2':  # OPTION A: MINIMAP2 LOGIC
         
-        # Create a query file
-        query_fp = tempfile.NamedTemporaryFile(mode='wt', delete=False, suffix=".fa")
-        query_fp.write(f">query\n{sequence}\n")
-        query_fp.close()
+        query_temp_file_name = write_temp_fasta_file(['query'], {'query':sequence})
 
         for seqname in range_names:
-            # Create a temp file for the Reference block
-            ref_fp = tempfile.NamedTemporaryFile(mode='wt', delete=False, suffix=".fa")
-            ref_fp.write(f">{seqname}\n{range_seqs[seqname]}\n")
-            ref_fp.close()
+            
+            ref_temp_file_name = write_temp_fasta_file([seqname], {seqname:range_sequences[seqname]})
 
             # Run Minimap2
-            command = [minimap2_exe, "-ax", "splice", "--secondary=no", ref_fp.name, query_fp.name]
+            command = [minimap2_path, "-ax", "splice", "--secondary=no", ref_temp_file_name, query_temp_file_name]
             
             try: 
-                result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+                result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, check=True)
                 
                 if verbose:
                     print(f"# INFO(align_sequence_to_ranges): minimap2 finished for {seqname}")
@@ -286,23 +284,23 @@ def align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
 
             except subprocess.CalledProcessError:
                 print(f'# ERROR(align_sequence_to_ranges): minimap2 failed')
+                os.remove(query_temp_file_name)
+                os.remove(ref_temp_file_name)
 
-            if os.path.exists(ref_fp.name): os.remove(ref_fp.name)
+            os.remove(ref_temp_file_name)
         
-        if os.path.exists(query_fp.name): os.remove(query_fp.name)
+        os.remove(query_temp_file_name)
 
-    # ==========================
-    # OPTION B: GMAP LOGIC
-    # ==========================
-    else: 
-        for seqname in range_names:
+    else: # OPTION B: GMAP LOGIC
+
+        for seqname in range_seqnames:
             range_str = '' 
             range_start = 0
             range_end = 0     
             range_strand = '+'
 
             temp_file_name = write_temp_fasta_file([seqname,'query'], 
-                                                {seqname:range_seqs[seqname], 'query':sequence})
+                                                {seqname:range_sequences[seqname], 'query':sequence})
 
             command = f"cat {temp_file_name} | {gmap_path} -t 1 -n 1 -2"
             try: 
@@ -345,8 +343,6 @@ def align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
                         
             except subprocess.CalledProcessError as e:
                 print(f'# ERROR(align_sequence_to_ranges): {e.cmd} failed: {e.stderr}')
-
-    if os.path.exists(tempfp.name): os.remove(tempfp.name)
 
     # Sort aligned ranges using the global get_rank function
     if ranked_genomes:
@@ -851,13 +847,13 @@ def main():
     parser.add_argument(
         "--bedtools_exe",
         default='bedtools',
-        help="path to bedtools executable, default: {default}"
+        help="path to bedtools executable, default: bedtools"
     )
 
     parser.add_argument(
         "--agc_exe",
         default='agc',
-        help="path to agc executable, default: {default}"
+        help=f"path to agc executable, default: agc"
     )
 
     parser.add_argument(
