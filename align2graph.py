@@ -191,7 +191,7 @@ def get_rank(range_str, ranked_genomes):
 # %%
 def align_sequence_to_ranges(agc_path, agc_db_path, gmap_path, 
                              sequence, agc_ranges, ranked_genomes=None, 
-                             aligner_tool='gmap', minimap2_path='minimap2', 
+                             aligner_tool='gmap', minimap_path='minimap2', 
                              verbose=False):
     """
     Calls agc to cut genome fragments corresponding to list of ranges in appropriate agc format.
@@ -231,17 +231,15 @@ def align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
         return ";".join(agc_ranges)
 
     # --- Step 2: Align using selected tool ---
-    if aligner_tool == 'minimap2':  # OPTION A: MINIMAP2 LOGIC
+    if aligner_tool == 'minimap':  # OPTION A: MINIMAP2 LOGIC
         
         query_temp_file_name = write_temp_fasta_file(['query'], {'query':sequence})
 
-        for seqname in range_names:
+        for seqname in range_seqnames:
             
             ref_temp_file_name = write_temp_fasta_file([seqname], {seqname:range_sequences[seqname]})
 
-            # Run Minimap2
-            command = [minimap2_path, "-ax", "splice", "--secondary=no", ref_temp_file_name, query_temp_file_name]
-            
+            command = [minimap_path, "-ax", "splice", "--secondary=no", ref_temp_file_name, query_temp_file_name]
             try: 
                 result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, check=True)
                 
@@ -356,7 +354,8 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,genomes,bed_folder_path,
                                 coverage=0.75,all_graph_matches=False,
                                 aligner_tool='gmap',
                                 bedtools_path='bedtools',grep_path='grep',
-                                agc_path='agc', agc_db_path='', gmap_path='gmap',
+                                agc_path='agc', agc_db_path='', 
+                                gmap_path='gmap', minimap_path='minimap',
                                 ranked_genomes=None,
                                 verbose=False):
     """Retrieves PHG keys for ranges overlapping gmap match in reference genome.
@@ -453,7 +452,9 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,genomes,bed_folder_path,
                     for b in result.stdout.splitlines():
                         bed_data = b.split("\t")
                         if len(bed_data) > 4:
-                            # Calculate 5% padding on each side. On genomic regions, UTRs from other genomes may be shorter than the sequence in other ranges, so adding padding on both sides to avoid cropping the end/start of a gene when add_ranges
+                            # Calculate 5% padding on each side. On genomic regions, 
+                            # UTRs from other genomes may be shorter than the sequence in other ranges, 
+                            # so adding padding on both sides to avoid cropping the end/start of a gene when add_ranges
                             start = int(bed_data[1])
                             end = int(bed_data[2])
                             block_length = end - start
@@ -477,6 +478,7 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,genomes,bed_folder_path,
                                                     gmap_match['sequence'], agc_ranges,
                                                     ranked_genomes=ranked_genomes,
                                                     aligner_tool=aligner_tool,
+                                                    minimap_path=minimap_path,
                                                     verbose=verbose)
         all_ranges = aligned_ranges 
 
@@ -662,7 +664,8 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_fold
                                 coverage=0.75,all_graph_matches=False,
                                 aligner_tool='gmap',
                                 bedtools_path='bedtools',grep_path='grep',
-                                agc_path='agc', agc_db_path='', gmap_path='gmap',
+                                agc_path='agc', agc_db_path='', 
+                                gmap_path='gmap', minimap_path='minimap',
                                 ranked_genomes=None,
                                 verbose=False):
     """Retrieves PHG keys for ranges overlapping gmap match in 1st matched pangenome assembly.
@@ -813,6 +816,7 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_fold
                                                     gmap_match['sequence'], sorted(keys.values()),
                                                     ranked_genomes=ranked_genomes,
                                                     aligner_tool=aligner_tool,
+                                                    minimap_path=minimap_path,
                                                     verbose=verbose)
 
     return match_tsv + aligned_ranges
@@ -857,6 +861,12 @@ def main():
     )
 
     parser.add_argument(
+        "--minimap_exe",
+        default='minimap2',
+        help=f"path to minimap executable, default: minimap2"
+    )
+
+    parser.add_argument(
         "--cor", 
         default=4, 
         help="number of cores for gmap, default: 4"
@@ -898,11 +908,10 @@ def main():
         help='Input sequences are genomic, turn off splicing'
     )
     
-    # MODIFIED: Now is not a flag, but a choice of tool
     parser.add_argument('--add_ranges', 
         type=str,
-        choices=['gmap', 'minimap2'],
-        help='Add all pangenome ranges matching input sequences using specified tool (gmap or minimap2)'
+        choices=['gmap', 'minimap'],
+        help='Add all pangenome ranges matching input sequences using specified tool (gmap or minimap)'
     )
 
     args = parser.parse_args()
@@ -946,6 +955,7 @@ def process_sequences_serial(args):
     # get other optional params
     bedtools_exe  = args.bedtools_exe
     agc_exe       = args.agc_exe
+    minimap_exe   = args.minimap_exe
     ncores        = int(args.cor)
     min_identity  = float(args.minident)
     min_coverage  = float(args.mincover)
@@ -1035,6 +1045,7 @@ def process_sequences_serial(args):
                     agc_path=agc_exe,
                     agc_db_path=agc_db,
                     gmap_path=gmap_exe,
+                    minimap_path=minimap_exe, 
                     ranked_genomes=ranked_pangenome_genomes,
                     verbose=verbose_out)
                 
@@ -1053,6 +1064,7 @@ def process_sequences_serial(args):
                     agc_path=agc_exe,
                     agc_db_path=agc_db,
                     gmap_path=gmap_exe,
+                    minimap_path=minimap_exe,
                     ranked_genomes=ranked_pangenome_genomes, 
                     verbose=verbose_out)
 
