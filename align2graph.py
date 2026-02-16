@@ -94,17 +94,18 @@ def write_temp_fasta_file(names, seqs, prefix_string="temp",
         return ''
 
 # %%
-def valid_matches(gff_file, min_identity, min_coverage, verbose=False):
+def valid_matches(gff_file, genome_name, sequence, min_identity, min_coverage, verbose=False):
     """Checks if GFF3 contains gene & mRNA features with required identity and coverage.
     Assumes 1st match is best, but counts all matches satisfying identity and coverage.
-    Returns dictionary with sequence names as 1ary key and the following 2ary keys:
-    i) matches (int), 
-    ii) ident (float), 
-    iii) cover (float), 
-    iv) chrom (string),
-    v) start (int),
-    vi) end (int),
-    vii) strand (string)"""
+    Returns dictionary of lists with sequence names as 1ary key and the following 2ary keys:
+    i) genome (string),
+    ii) sequence (string),
+    iii) ident (float), 
+    iv) cover (float), 
+    v) chrom (string),
+    vi) start (int),
+    vii) end (int),
+    viii) strand (string)"""
 
     matches = {}
     pattern1 = r'coverage=([^;]+);identity=([^;]+)'
@@ -150,20 +151,20 @@ def valid_matches(gff_file, min_identity, min_coverage, verbose=False):
                             if match3:
                                 seqname = match3.group(1)
                                 if seqname not in matches:
-                                    matches[seqname] = {}
-                                    matches[seqname]['matches'] = 0
-
-                                matches[seqname]['matches'] = matches[seqname]['matches'] + 1 
-
-                                if(matches[seqname]['matches'] == 1):
-                                    matches[seqname]['ident'] = identity
-                                    matches[seqname]['cover'] = coverage
-                                    matches[seqname]['chrom'] = fields[0]
-                                    matches[seqname]['start'] = int(fields[3])
-                                    matches[seqname]['end'] = int(fields[4])
-                                    matches[seqname]['strand'] = fields[6]
-                                    if verbose == True:                    
-                                        print("#",line)
+                                    matches[seqname] = []
+                                    
+                                matches[seqname].append({
+                                    'genome':genome_name,
+                                    'sequence':sequence,
+                                    'ident':identity,
+                                    'cover':coverage,
+                                    'chrom':fields[0],
+                                    'start':int(fields[3]),
+                                    'end':int(fields[4]),
+                                    'strand':fields[6]
+                                })
+                                if verbose == True:                    
+                                    print("#",line)
                                                
     return matches
 
@@ -351,13 +352,14 @@ def align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
 
 # %%
 def get_overlap_ranges_reference(gmap_match,hapIDranges,genomes,bed_folder_path,
-                                coverage=0.75,all_graph_matches=False,
+                                coverage=0.75,mult_mappings='No',all_graph_matches=False,
                                 aligner_tool='gmap',
                                 bedtools_path='bedtools',grep_path='grep',
                                 agc_path='agc', agc_db_path='', 
                                 gmap_path='gmap', minimap_path='minimap',
                                 ranked_genomes=None,
                                 verbose=False):
+
     """Retrieves PHG keys for ranges overlapping gmap match in reference genome.
     Passed coverage is used to intersect ranges and match. Overlap does not consider strandness. 
     Note: agc & gmap only used when all_graph_matches=True to confirm range matches.
@@ -368,7 +370,6 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,genomes,bed_folder_path,
 
     keys = {}   # Allows storing multiple keys 
     match_tsv = ''
-    mult_mappings = 'No'
     all_ranges = '.'
 
     chrom = gmap_match['chrom']
@@ -378,8 +379,6 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,genomes,bed_folder_path,
     strand = gmap_match['strand']
     ident = gmap_match['ident']
     cover = gmap_match['cover']
-    if(gmap_match['matches'] > 1):
-        mult_mappings = 'Yes'
 
     if verbose == True:
         print(f"# Checking match for {chrom}:{start}-{end} within reference")
@@ -557,10 +556,7 @@ def run_gmap_genomes(pangenome_genomes, gmap_path, gmap_db, fasta_filename,
     # parse sequences and init dictionary of matches
     seqnames, sequences = parse_fasta_file(fasta_filename)
     for seqname in seqnames:
-        gmap_matches[seqname] = {}       
-        gmap_matches[seqname]['sequence'] = ''
-        gmap_matches[seqname]['matches'] = 0
-        gmap_matches[seqname]['genome'] = ''
+        gmap_matches[seqname] = [] 
      
     # loop over genomes hierarchically
     for genome in pangenome_genomes:
@@ -569,7 +565,7 @@ def run_gmap_genomes(pangenome_genomes, gmap_path, gmap_db, fasta_filename,
         g_seqnames = []
         g_sequences = {}
         for seqname in seqnames:
-            if gmap_matches[seqname]['matches'] == 0:
+            if len(gmap_matches[seqname]) == 0:
                 g_seqnames.append(seqname)
                 g_sequences[seqname] = sequences[seqname]    
 
@@ -640,18 +636,9 @@ def run_gmap_genomes(pangenome_genomes, gmap_path, gmap_db, fasta_filename,
                 else:
                     print(f"\nERROR(run_gmap_genomes): '{e.cmd}' (gmap) returned non-zero exit status {e.returncode}.")
 
-        genome_matches = valid_matches(g_gff_filename,min_identity,min_coverage,verbose=verbose)
-        
+        genome_matches = valid_matches(g_gff_filename,genome,sequences[seqname],min_identity,min_coverage,verbose=verbose)
         for seqname in genome_matches:
-            gmap_matches[seqname]['genome'] = genome
-            gmap_matches[seqname]['matches'] = genome_matches[seqname]['matches']
-            gmap_matches[seqname]['chrom'] = genome_matches[seqname]['chrom']
-            gmap_matches[seqname]['start'] = genome_matches[seqname]['start']
-            gmap_matches[seqname]['end'] = genome_matches[seqname]['end']
-            gmap_matches[seqname]['strand'] = genome_matches[seqname]['strand']
-            gmap_matches[seqname]['ident'] = genome_matches[seqname]['ident']
-            gmap_matches[seqname]['cover'] = genome_matches[seqname]['cover']
-            gmap_matches[seqname]['sequence'] = sequences[seqname]
+            gmap_matches[seqname] = genome_matches[seqname]
 
         # clean up temp files
         os.remove(g_gff_filename)
@@ -661,7 +648,7 @@ def run_gmap_genomes(pangenome_genomes, gmap_path, gmap_db, fasta_filename,
 
 # %%
 def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_folder_path,
-                                coverage=0.75,all_graph_matches=False,
+                                coverage=0.75,mult_mappings='No',all_graph_matches=False,
                                 aligner_tool='gmap',
                                 bedtools_path='bedtools',grep_path='grep',
                                 agc_path='agc', agc_db_path='', 
@@ -681,7 +668,6 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_fold
     keys = {}
     match_tsv = ''
     graph_key = ''
-    mult_mappings = 'No'
     aligned_ranges = '.'
     
     chrom = gmap_match['chrom']
@@ -691,8 +677,6 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_fold
     strand = gmap_match['strand']
     ident = gmap_match['ident']
     cover = gmap_match['cover']
-    if(gmap_match['matches'] > 1):
-        mult_mappings = 'Yes'
 
     if verbose == True:
         print(f"# Checking match for {chrom}:{start}-{end} at {bedfile}")
@@ -1028,16 +1012,22 @@ def process_sequences_serial(args):
     
     # compute graph coordinates for matched sequences
     for seqname in gmap_matches:
-        if gmap_matches[seqname]['matches'] > 0:
 
-            if(gmap_matches[seqname]['genome'] == reference_name):
+        mult_maps = 'No'
+        if len(gmap_matches[seqname]) > 1:
+            mult_maps = 'Yes' 
+
+        for match in gmap_matches[seqname]:    
+
+            if(match['genome'] == reference_name):
 
                 matched_coords = get_overlap_ranges_reference(
-                    gmap_matches[seqname], 
+                    match, 
                     hapIDranges,
                     graph_pangenome_genomes, 
-                    hvcf_bed, # --- CHANGED --- 
+                    hvcf_bed,
                     coverage=min_coverage_range/100,
+                    mult_mappings=mult_maps,
                     all_graph_matches=do_add_ranges, 
                     aligner_tool=aligner_tool,       
                     bedtools_path=bedtools_exe, 
@@ -1051,12 +1041,13 @@ def process_sequences_serial(args):
                 
             else:  
                 matched_coords = get_overlap_ranges_pangenome(
-                    gmap_matches[seqname],
+                    match,
                     hapIDranges,
                     graph_pangenome_genomes,
-                    f"{hvcf_bed}/{gmap_matches[seqname]['genome']}.h.bed", # --- CHANGED ---
-                    hvcf_bed, # --- CHANGED ---
+                    f"{hvcf_bed}/{match['genome']}.h.bed",
+                    hvcf_bed,
                     coverage=min_coverage_range/100,
+                    mult_mappings=mult_maps,
                     all_graph_matches=do_add_ranges, 
                     aligner_tool=aligner_tool,       
                     bedtools_path=bedtools_exe,
