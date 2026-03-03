@@ -197,6 +197,7 @@ def align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
     """
     Calls agc to cut genome fragments corresponding to list of ranges in appropriate agc format.
     Then aligns input sequence to these ranges using either GMAP (pairwise) or Minimap2 (splice).
+    Sequence identity not computed.
     Returns alignment-corrected ranges in CSV string.
     """
 
