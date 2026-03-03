@@ -897,6 +897,11 @@ def main():
         choices=['gmap', 'minimap'],
         help='Add all pangenome ranges matching input sequences using specified tool (gmap or minimap)'
     )
+  
+    parser.add_argument('--version',
+        action='store_true',
+        help='Print version'
+    )
 
     args = parser.parse_args()
 
@@ -947,7 +952,7 @@ def process_sequences_serial(args):
     temp_path     = args.tmp_path
     verbose_out   = args.verb
     genomic       = args.genomic
-    
+
     # Logic for add_ranges
     aligner_tool  = args.add_ranges
     do_add_ranges = (aligner_tool is not None)
@@ -957,6 +962,10 @@ def process_sequences_serial(args):
     ######################################################
 
     gmap_version = check_gmap_version(gmap_exe)
+
+    print(f"# version: {__version__}")
+    if(args.version == True):
+        sys.exit()    
 
     print(f"# GMAP version: {gmap_version}")
     print(f"# config_file: {args.graph_yaml}")
