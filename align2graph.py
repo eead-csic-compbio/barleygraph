@@ -812,8 +812,9 @@ def main():
 
     parser = argparse.ArgumentParser(
         description="Map sequences within pangenome graph.\n",
-        epilog="Citation: see https://github.com/eead-csic-compbio/barleygraph\n",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=f"Version: {__version__} {__versiondate__}\n"+
+            "Citation: see https://github.com/eead-csic-compbio/barleygraph\n",
+        formatter_class=argparse.RawDescriptionHelpFormatter
     )
 
     parser.add_argument(
