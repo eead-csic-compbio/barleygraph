@@ -963,7 +963,7 @@ def process_sequences_serial(args):
 
     gmap_version = check_gmap_version(gmap_exe)
 
-    print(f"# version: {__version__}")
+    print(f"# version: {__version__} {__versiondate__}")
     if(args.version == True):
         sys.exit()    
 
@@ -1093,7 +1093,7 @@ if __name__ == "__main__":
     import uuid
     import time
     import yaml
-    from version import __version__
+    from version import __version__ , __versiondate__
 
     start_time = time.time()
     main()
