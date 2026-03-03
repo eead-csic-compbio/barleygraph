@@ -1084,7 +1084,7 @@ if __name__ == "__main__":
     import uuid
     import time
     import yaml
-
+    from version import __version__
 
     start_time = time.time()
     main()
