@@ -1,0 +1,5 @@
+#!/bin/bash
+# to enable: cd .git/hooks && ln -s ../../pre-commit .
+echo "__version__ = '$(git rev-parse --short HEAD)'" > version.py
+echo "__versiondate__ = '$(git log -1 --format=%as)'" >> version.py
+git add version.py
