@@ -899,12 +899,9 @@ def main():
         help='Add all pangenome ranges matching input sequences using specified tool (gmap or minimap)'
     )
   
-    parser.add_argument('--version',
-        action='store_true',
-        help='Print version'
-    )
-
     args = parser.parse_args()
+
+    print('hola')
 
     # Sequential execution for now, parallelization could be implemented later if needed
     process_sequences_serial(args)
@@ -965,9 +962,6 @@ def process_sequences_serial(args):
     gmap_version = check_gmap_version(gmap_exe)
 
     print(f"# version: {__version__} {__versiondate__}")
-    if(args.version == True):
-        sys.exit()    
-
     print(f"# GMAP version: {gmap_version}")
     print(f"# config_file: {args.graph_yaml}")
     print(f"# fasta_file: {fasta_file}")
