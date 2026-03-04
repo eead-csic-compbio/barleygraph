@@ -94,7 +94,7 @@ def write_temp_fasta_file(names, seqs, prefix_string="temp",
         return ''
 
 # %%
-def valid_matches(gff_file, genome_name, sequence, min_identity, min_coverage, verbose=False):
+def valid_matches(gff_file, genome_name, query_sequences, min_identity, min_coverage, verbose=False):
     """Checks if GFF3 contains gene & mRNA features with required identity and coverage.
     Assumes 1st match is best, but counts all matches satisfying identity and coverage.
     Returns dictionary of lists with sequence names as 1ary key and the following 2ary keys:
@@ -155,7 +155,7 @@ def valid_matches(gff_file, genome_name, sequence, min_identity, min_coverage, v
                                     
                                 matches[seqname].append({
                                     'genome':genome_name,
-                                    'sequence':sequence,
+                                    'sequence':query_sequences.get(seqname, ''),
                                     'ident':identity,
                                     'cover':coverage,
                                     'chrom':fields[0],
@@ -193,11 +193,12 @@ def get_rank(range_str, ranked_genomes):
 def align_sequence_to_ranges(agc_path, agc_db_path, gmap_path, 
                              sequence, agc_ranges, ranked_genomes=None, 
                              aligner_tool='gmap', minimap_path='minimap2', 
+                             min_identity=0.0,
                              verbose=False):
     """
     Calls agc to cut genome fragments corresponding to list of ranges in appropriate agc format.
     Then aligns input sequence to these ranges using either GMAP (pairwise) or Minimap2 (splice).
-    Sequence identity not computed.
+    If aligner_tool is GMAP and min_identity > 0, ranges below this identity are filtered out.
     Returns alignment-corrected ranges in CSV string.
     """
 
@@ -261,6 +262,34 @@ def align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
                     ref_name = cols[2]
                     pos = int(cols[3])
                     cigar = cols[5]
+
+                    aligned_bases = 0
+                    for length, op in re.findall(r"(\d+)([MIDNSHP=X])", cigar):
+                        if op in "MIDX=":
+                            aligned_bases += int(length)
+
+                    minimap_identity = None
+                    nm_tag = None
+                    for field in cols[11:]:
+                        if field.startswith("NM:i:"):
+                            try:
+                                nm_tag = int(field.split(":")[-1])
+                            except ValueError:
+                                nm_tag = None
+                            break
+
+                    if aligned_bases > 0 and nm_tag is not None:
+                        minimap_identity = (1.0 - (nm_tag / aligned_bases)) * 100.0
+
+                    if minimap_identity is None and min_identity > 0:
+                        if verbose:
+                            print(f"# INFO(align_sequence_to_ranges): skip {seqname}, cannot parse minimap identity and min_identity={min_identity}")
+                        continue
+
+                    if minimap_identity is not None and minimap_identity < min_identity:
+                        if verbose:
+                            print(f"# INFO(align_sequence_to_ranges): skip {seqname}, minimap identity {minimap_identity:.2f} < min_identity {min_identity}")
+                        continue
                     
                     # Calculate alignment length on reference from CIGAR
                     ref_len = 0
@@ -314,6 +343,25 @@ def align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
 
                 paths = re.search(r"Paths \([123456789]+", result.stdout)
                 if paths:
+                    gmap_identity = None
+                    identity_match = re.search(r"Percent identity:\s*([\d.]+)", result.stdout)
+                    if not identity_match:
+                        identity_match = re.search(r"Identity:\s*([\d.]+)%", result.stdout)
+                    if identity_match:
+                        gmap_identity = float(identity_match.group(1))
+
+                    if gmap_identity is None and min_identity > 0:
+                        if verbose == True:
+                            print(f"# INFO(align_sequence_to_ranges): skip {seqname}, cannot parse GMAP identity and min_identity={min_identity}")
+                        os.remove(temp_file_name)
+                        continue
+
+                    if gmap_identity is not None and gmap_identity < min_identity:
+                        if verbose == True:
+                            print(f"# INFO(align_sequence_to_ranges): skip {seqname}, identity {gmap_identity:.2f} < min_identity {min_identity}")
+                        os.remove(temp_file_name)
+                        continue
+
                     rangematch = re.search(r"(chr\d[a-zA-Z])_sampleName=([^:]+):(\d+)-(\d+)", seqname)
                     if rangematch:
                         range_str = f'{rangematch.group(1)}@{rangematch.group(2)}'
@@ -359,6 +407,7 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,genomes,bed_folder_path,
                                 agc_path='agc', agc_db_path='', 
                                 gmap_path='gmap', minimap_path='minimap',
                                 ranked_genomes=None,
+                                min_identity=0.0,
                                 verbose=False):
 
     """Retrieves PHG keys for ranges overlapping gmap match in reference genome.
@@ -479,6 +528,7 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,genomes,bed_folder_path,
                                                     ranked_genomes=ranked_genomes,
                                                     aligner_tool=aligner_tool,
                                                     minimap_path=minimap_path,
+                                                    min_identity=min_identity,
                                                     verbose=verbose)
         all_ranges = aligned_ranges 
 
@@ -637,7 +687,7 @@ def run_gmap_genomes(pangenome_genomes, gmap_path, gmap_db, fasta_filename,
                 else:
                     print(f"\nERROR(run_gmap_genomes): '{e.cmd}' (gmap) returned non-zero exit status {e.returncode}.")
 
-        genome_matches = valid_matches(g_gff_filename,genome,sequences[seqname],min_identity,min_coverage,verbose=verbose)
+        genome_matches = valid_matches(g_gff_filename,genome,sequences,min_identity,min_coverage,verbose=verbose)
         for seqname in genome_matches:
             gmap_matches[seqname] = genome_matches[seqname]
 
@@ -655,6 +705,7 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_fold
                                 agc_path='agc', agc_db_path='', 
                                 gmap_path='gmap', minimap_path='minimap',
                                 ranked_genomes=None,
+                                min_identity=0.0,
                                 verbose=False):
     """Retrieves PHG keys for ranges overlapping gmap match in 1st matched pangenome assembly.
     BED file is usually a .h.bed file with sorted ranges extracted from PHG .h.vcf.gz files.
@@ -802,6 +853,7 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_fold
                                                     ranked_genomes=ranked_genomes,
                                                     aligner_tool=aligner_tool,
                                                     minimap_path=minimap_path,
+                                                    min_identity=min_identity,
                                                     verbose=verbose)
 
     return match_tsv + aligned_ranges
@@ -1040,6 +1092,7 @@ def process_sequences_serial(args):
                     gmap_path=gmap_exe,
                     minimap_path=minimap_exe, 
                     ranked_genomes=ranked_pangenome_genomes,
+                    min_identity=min_identity,
                     verbose=verbose_out)
                 
             else:  
@@ -1060,6 +1113,7 @@ def process_sequences_serial(args):
                     gmap_path=gmap_exe,
                     minimap_path=minimap_exe,
                     ranked_genomes=ranked_pangenome_genomes, 
+                    min_identity=min_identity,
                     verbose=verbose_out)
 
             # print output coordinates and update chr names if needed
