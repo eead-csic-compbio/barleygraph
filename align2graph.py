@@ -304,7 +304,7 @@ def align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
                         genome = rangematch.group(2)
                         chunk_start = int(rangematch.group(3))
                         
-                        final_start = chunk_start + pos - 1
+                        final_start = chunk_start + pos
                         final_end = final_start + ref_len - 1
                         strand = '-' if (flag & 16) else '+'
                         
@@ -377,7 +377,7 @@ def align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
                             range_strand = '-'
                             gmap_start, gmap_end = gmap_end, gmap_start 
                         
-                        range_start += gmap_start - 1 
+                        range_start += gmap_start 
                         range_end = range_start + (gmap_end - gmap_start)
                         range_str = f'{range_str}:{range_start}-{range_end}({range_strand})'
                     
