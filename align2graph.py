@@ -902,8 +902,6 @@ def main():
   
     args = parser.parse_args()
 
-    print('hola')
-
     # Sequential execution for now, parallelization could be implemented later if needed
     process_sequences_serial(args)
 

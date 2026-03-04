@@ -231,5 +231,5 @@ See the files at [graphs/](https://github.com/eead-csic-compbio/barleygraph/tree
 
 [PID2022-142116OB-I00] by MICIU/AEI/10.13039/501100011033
 
-![AEI](./AEI.jpg)
+![AEI](./miscellaneous/AEI.jpg)
 
