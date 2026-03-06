@@ -3,7 +3,7 @@
 # Aligns arbitrary DNA sequences to a gmap+PHG pangenome in up to 2 steps:
 # i) hierarchically gmap input sequences to included genomes, starting from reference,
 # ii) queries PHG haplotypes to obtain precomputed matches in other included genomes
-# Returns reference-based coordinates of matched sequence
+# Returns 1-based reference-based coordinates of matched sequence
 #
 # J Sarria, B Contreras-Moreira
 # Copyright [2024-26] Estacion Experimental de Aula Dei-CSIC
@@ -99,7 +99,7 @@ def valid_matches(gff_file, genome_name, query_sequences, min_identity, min_cove
     Assumes 1st match is best, but counts all matches satisfying identity and coverage.
     Returns dictionary of lists with sequence names as 1ary key and the following 2ary keys:
     i) genome (string),
-    ii) sequence (string),
+    ii) sequences (dictionary),
     iii) ident (float), 
     iv) cover (float), 
     v) chrom (string),
@@ -917,7 +917,7 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_fold
 def main():
 
     parser = argparse.ArgumentParser(
-        description="Map sequences within pangenome graph.\n",
+        description="Map sequences within pangenome graph, returns 1-based coordinates.\n",
         epilog=f"Version: {__version__} {__versiondate__}\n"+
             "Citation: see https://github.com/eead-csic-compbio/barleygraph\n",
         formatter_class=argparse.RawDescriptionHelpFormatter
