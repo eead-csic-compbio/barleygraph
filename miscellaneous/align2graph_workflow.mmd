@@ -1,0 +1,84 @@
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Helvetica Neue, Helvetica, Arial, sans-serif",
+    "fontSize": "16px",
+    "primaryColor":        "#DBEAFE",
+    "primaryTextColor":    "#1e3a5f",
+    "primaryBorderColor":  "#3B82F6",
+    "lineColor":           "#64748B",
+    "secondaryColor":      "#FEF9C3",
+    "tertiaryColor":       "#F0FDF4",
+    "background":          "#ffffff",
+    "clusterBkg":          "#F8FAFC",
+    "clusterBorder":       "#CBD5E1",
+    "edgeLabelBackground": "#ffffff"
+  },
+  "flowchart": {
+    "curve": "basis",
+    "padding": 24,
+    "nodeSpacing": 55,
+    "rankSpacing": 65,
+    "diagramPadding": 40,
+    "wrappingWidth": 3000
+  }
+}}%%
+
+flowchart TD
+
+    FASTA(["Input FASTA<br/><i>single or multiple sequences</i>"])
+
+    subgraph LOOP ["Hierarchical GMAP alignment"]
+        direction TB
+        GMAP["GMAP<br/><i>global alignment<br/>vs. single genome</i>"]
+        FILTER["Filter hits<br/><i>identity ≥ --minident<br/>coverage ≥ --mincover</i>"]
+        UNMAPPED{"Unmapped<br/>sequences?"}
+        NEXTG["Next genome<br/><i>ranked by haplotype range count</i>"]
+        GMAP --> FILTER --> UNMAPPED
+        UNMAPPED -- "Yes" --> NEXTG --> GMAP
+    end
+
+    MATCHED["Placement coordinates<br/><i>chr · start · end · strand</i>"]
+
+    BEDTOOLS["bedtools intersect<br/><i>overlap hit vs. pangenome haploblocks</i>"]
+
+    subgraph ADDRANGES ["  "]
+        direction TB
+        EXTRACT["AGC getctg<br/><i>extract haploblock sequences<br/>from pangenome genomes</i>"]
+
+        subgraph ALIGNER ["Re-alignment"]
+            direction LR
+            GMAP2["gmap<br/><i>pairwise<br/>single hit</i>"]
+            MM2["minimap2<br/><i>splice mode<br/>primary hit</i>"]
+            BOTH["both<br/><i>→ merge to<br/>widest window</i>"]
+        end
+
+        SORT["Sort by haplotype<br/>range count"]
+        EXTRACT --> ALIGNER --> SORT
+    end
+
+    TSV(["Output TSV"])
+    EXAMPLE["query_name · ref_chr · ref_start · ref_end · ref_strand · genome · chr · start · end · strand · %identity · %coverage · multimaps · graph_ranges"]
+
+    FASTA      --> LOOP
+    UNMAPPED   -- "No" --> MATCHED
+    MATCHED    --> BEDTOOLS
+    BEDTOOLS   -- "--add_ranges off" --> TSV
+    BEDTOOLS   -- "--add_ranges on" --> EXTRACT
+    SORT       --> TSV
+    TSV        --> EXAMPLE
+
+    style FASTA      fill:#ECFDF5,stroke:#059669,color:#064E3B,font-weight:bold
+    style GMAP       fill:#EFF6FF,stroke:#3B82F6,color:#1e3a5f
+    style FILTER     fill:#EFF6FF,stroke:#3B82F6,color:#1e3a5f
+    style UNMAPPED   fill:#FEF9C3,stroke:#D97706,color:#333
+    style NEXTG      fill:#FEF3C7,stroke:#D97706,color:#451A03
+    style MATCHED    fill:#F0FDF4,stroke:#16A34A,color:#14532D,font-weight:bold
+    style BEDTOOLS   fill:#F5F3FF,stroke:#7C3AED,color:#1e1b4b
+    style EXTRACT    fill:#FFF7ED,stroke:#EA580C,color:#431407
+    style GMAP2      fill:#DBEAFE,stroke:#2563EB,color:#1e3a5f
+    style MM2        fill:#DBEAFE,stroke:#2563EB,color:#1e3a5f
+    style BOTH       fill:#EDE9FE,stroke:#7C3AED,color:#1e1b4b
+    style SORT       fill:#FFF7ED,stroke:#EA580C,color:#431407
+    style TSV        fill:#FDF4FF,stroke:#9333EA,color:#3b0764,font-weight:bold
+    style EXAMPLE    fill:#F8F8F8,stroke:#9E9E9E,color:#333,font-family:monospace

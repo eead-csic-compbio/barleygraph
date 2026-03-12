@@ -33,6 +33,10 @@ Several steps are required to run BARLEYGRAPH, depending if you want to do [mapp
 
 <img src="https://github.com/eead-csic-compbio/barleygraph/blob/main/miscellaneous/Align2graph_esquema.png"  width="400">
 
+The figure below shows the full `align2graph` workflow:
+
+<img src="https://github.com/eead-csic-compbio/barleygraph/blob/main/miscellaneous/align2graph_workflow.png" width="900">
+
 ### 1. Create local folder for GMAP indices [mapping]
 
 This is done outside the container, as indices are bulky; in Linux you could do it as follows:
