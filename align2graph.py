@@ -393,9 +393,18 @@ def align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
         command = f"cat {temp_file_name} | {gmap_path} -t 1 -n 1 -2"
         try:
             result = subprocess.run(command,
-                                    shell=True, check=True, text=True,
+                                    shell=True, check=False, text=True,
                                     stdout=subprocess.PIPE,
-                                    stderr=subprocess.DEVNULL)
+                                    stderr=subprocess.PIPE)
+
+            if result.returncode != 0:
+                if verbose:
+                    stderr_txt = (result.stderr or '').strip()
+                    if stderr_txt:
+                        print(f"# WARN(align_sequence_to_ranges): gmap pairwise exited {result.returncode} for {seqname}: {stderr_txt}")
+                    else:
+                        print(f"# WARN(align_sequence_to_ranges): gmap pairwise exited {result.returncode} for {seqname} (no stderr)")
+                return []
 
             if verbose == True:
                 print(f"# INFO(align_sequence_to_ranges): gmap result for {seqname}:\n{result.stdout}")
@@ -453,8 +462,8 @@ def align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
             if verbose == True:
                 print(f"# INFO(align_sequence_to_ranges): no valid alignment for {seqname}")
 
-        except subprocess.CalledProcessError as e:
-            print(f'# ERROR(align_sequence_to_ranges): {e.cmd} failed: {e.stderr}')
+        except Exception as e:
+            print(f'# ERROR(align_sequence_to_ranges): gmap pairwise exception for {seqname}: {e}')
 
         finally:
             os.remove(temp_file_name)
