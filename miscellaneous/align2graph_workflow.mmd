@@ -30,7 +30,7 @@ flowchart TD
 
     subgraph LOOP ["Hierarchical GMAP alignment"]
         direction TB
-        GMAP["GMAP<br/><i>global alignment<br/>vs. single genome</i>"]
+        GMAP["GMAP<br/><i>iterate genomes until 1st graph match<br/>vs. single genome</i>"]
         FILTER["Filter hits<br/><i>identity ≥ --minident<br/>coverage ≥ --mincover</i>"]
         UNMAPPED{"Unmapped<br/>sequences?"}
         NEXTG["Next genome<br/><i>ranked by haplotype range count</i>"]
