@@ -48,25 +48,36 @@ flowchart TD
 
         subgraph ALIGNER ["Re-alignment"]
             direction LR
-            GMAP2["gmap<br/><i>pairwise<br/>single hit</i>"]
-            MM2["minimap2<br/><i>splice mode<br/>primary hit</i>"]
-            BOTH["both<br/><i>→ merge to<br/>widest window</i>"]
+            GMAP2["gmap<br/><i>pairwise<br/></i>"]
+            MM2["minimap2<br/><i>splice mode</i>"]
+            BOTH["both<br/><i>→ keep larger hit count<br/>OR merge widest single</i>"]
         end
 
         SORT["Sort by haplotype<br/>range count"]
         EXTRACT --> ALIGNER --> SORT
     end
 
-    TSV(["Output TSV"])
-    EXAMPLE["query_name · ref_chr · ref_start · ref_end · ref_strand · genome · chr · start · end · strand · %identity · %coverage · multimaps · graph_ranges"]
+    TSVR(["Output TSV<br/><i>with ranges</i>"])
+    TSVN(["Output TSV<br/><i>without ranges</i>"])
+    EXAMPLE["query_name · ref_chr · ref_start · ref_end · ref_strand · genome · chr · start · end · strand · %identity · %coverage · multimaps · [graph_ranges]"]
+    
+    CHECK{"Graph coords<br/>found?"}
+    RAWHITS(["Output raw hits<br/><i>genome · chr · coordinates<br/>when no haploblocks overlap</i>"])
 
     FASTA      --> LOOP
     UNMAPPED   -- "No" --> MATCHED
     MATCHED    --> BEDTOOLS
-    BEDTOOLS   -- "--add_ranges off" --> TSV
-    BEDTOOLS   -- "--add_ranges on" --> EXTRACT
-    SORT       --> TSV
-    TSV        --> EXAMPLE
+    BEDTOOLS   --> CHECK
+    CHECK      -- "Yes" --> ADDRNG{"--add_ranges<br/>enabled?"}
+    ADDRNG     -- "Yes" --> EXTRACT
+    ADDRNG     -- "No" --> TSVN
+    CHECK      -- "No" --> ADDRNG2{"--add_ranges<br/>enabled?"}
+    ADDRNG2    -- "Yes" --> NEXTG
+    ADDRNG2    -- "No / all genomes exhausted" --> RAWHITS
+    SORT       --> TSVR
+    RAWHITS    --> TSVN
+    TSVR       --> EXAMPLE
+    TSVN       --> EXAMPLE
 
     style FASTA      fill:#ECFDF5,stroke:#059669,color:#064E3B,font-weight:bold
     style GMAP       fill:#EFF6FF,stroke:#3B82F6,color:#1e3a5f
@@ -75,10 +86,15 @@ flowchart TD
     style NEXTG      fill:#FEF3C7,stroke:#D97706,color:#451A03
     style MATCHED    fill:#F0FDF4,stroke:#16A34A,color:#14532D,font-weight:bold
     style BEDTOOLS   fill:#F5F3FF,stroke:#7C3AED,color:#1e1b4b
+    style CHECK      fill:#FEF9C3,stroke:#D97706,color:#333
+    style ADDRNG     fill:#FEF9C3,stroke:#D97706,color:#333
     style EXTRACT    fill:#FFF7ED,stroke:#EA580C,color:#431407
     style GMAP2      fill:#DBEAFE,stroke:#2563EB,color:#1e3a5f
     style MM2        fill:#DBEAFE,stroke:#2563EB,color:#1e3a5f
     style BOTH       fill:#EDE9FE,stroke:#7C3AED,color:#1e1b4b
     style SORT       fill:#FFF7ED,stroke:#EA580C,color:#431407
-    style TSV        fill:#FDF4FF,stroke:#9333EA,color:#3b0764,font-weight:bold
+    style TSVR       fill:#FDF4FF,stroke:#9333EA,color:#3b0764,font-weight:bold
+    style TSVN       fill:#F5F3FF,stroke:#7C3AED,color:#1e1b4b,font-weight:bold
+    style RAWHITS    fill:#FED5D5,stroke:#DC2626,color:#7F1D1D,font-weight:bold
     style EXAMPLE    fill:#F8F8F8,stroke:#9E9E9E,color:#333,font-family:monospace
+    style ADDRNG2    fill:#FEF9C3,stroke:#D97706,color:#333

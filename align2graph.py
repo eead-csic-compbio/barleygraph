@@ -10,6 +10,15 @@
 
 # %%
 
+# ==========================================================
+# GLOBAL VARIABLES
+# ==========================================================
+
+MINIMAP2_N_DEFAULT = 20
+# Default number of secondary alignments for minimap2
+# This is actually used for minimap2 sam building (anno genes on Morex) that anchorwave needs
+# to build the graph. Keeping it also for aligning to ranges.
+
 def parse_fasta_file(fasta, verbose=False):
     """Takes a FASTA filename and parses sequence names before 1st space.
     Returns: i) list of sequence names in input order, 
@@ -266,7 +275,9 @@ def align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
         return ";".join(agc_ranges)
 
     def keep_non_overlapping_ranges(range_results):
-        """Keeps non-overlapping graph ranges; preserves input order."""
+        """Keep only non-overlapping ranges while preserving the original order.
+        Overlap is checked only within the same chromosome and genome, and when two intervals overlap the first one is kept.
+        This avoids redundant nearby hits in `graph_ranges` after re-alignment."""
         kept = []
         kept_parsed = []
 
@@ -298,7 +309,7 @@ def align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
         range_results = []
         seen_ranges = set()
 
-        command = [minimap_path, "-ax", "splice", "-N", "20", ref_temp_file_name, query_temp_file_name]
+        command = [minimap_path, "-ax", "splice", "-N", str(MINIMAP2_N_DEFAULT), ref_temp_file_name, query_temp_file_name]
         try:
             result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, check=True)
 
