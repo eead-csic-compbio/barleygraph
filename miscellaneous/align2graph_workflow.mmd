@@ -40,13 +40,13 @@ flowchart TD
 
     MATCHED["genome coordinates<br/><i>chr · start · end · strand</i>"]
 
-    BEDTOOLS["bedtools intersect<br/><i>overlap genome coords vs. pangenome haploblocks</i>"]
+    BEDTOOLS["bedtools intersect<br/><i>overlap genome coords vs. pangenome range/haploblocks</i>"]
 
     subgraph ADDRANGES ["  "]
         direction TB
-        EXTRACT["AGC getctg<br/><i>extract haploblock sequences<br/>from pangenome genomes</i>"]
+        EXTRACT["AGC getctg<br/><i>extract range sequences<br/>from pangenome genomes</i>"]
 
-        subgraph ALIGNER ["Range alignment [optional]"]
+        subgraph ALIGNER ["Range alignment"]
             direction LR
             GMAP2["gmap<br/><i>pairwise<br/>single hit</i>"]
             MM2["minimap2<br/><i>splice mode<br/>primary hit</i>"]
