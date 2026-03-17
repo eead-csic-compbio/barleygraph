@@ -30,7 +30,7 @@ flowchart TD
 
     subgraph LOOP ["Hierarchical GMAP alignment"]
         direction TB
-        GMAP["GMAP<br/><i>global alignment<br/>vs. single genome</i>"]
+        GMAP["GMAP<br/><i>iterate genomes until 1st graph match<br/>vs. single genome</i>"]
         FILTER["Filter hits<br/><i>identity ≥ --minident<br/>coverage ≥ --mincover</i>"]
         UNMAPPED{"Unmapped<br/>sequences?"}
         NEXTG["Next genome<br/><i>ranked by haplotype range count</i>"]
@@ -38,15 +38,15 @@ flowchart TD
         UNMAPPED -- "Yes" --> NEXTG --> GMAP
     end
 
-    MATCHED["Placement coordinates<br/><i>chr · start · end · strand</i>"]
+    MATCHED["genome coordinates<br/><i>chr · start · end · strand</i>"]
 
-    BEDTOOLS["bedtools intersect<br/><i>overlap hit vs. pangenome haploblocks</i>"]
+    BEDTOOLS["bedtools intersect<br/><i>overlap genome coords vs. pangenome range/haploblocks</i>"]
 
     subgraph ADDRANGES ["  "]
         direction TB
-        EXTRACT["AGC getctg<br/><i>extract haploblock sequences<br/>from pangenome genomes</i>"]
+        EXTRACT["AGC getctg<br/><i>extract range sequences<br/>from pangenome genomes</i>"]
 
-        subgraph ALIGNER ["Re-alignment"]
+        subgraph ALIGNER ["Range alignment"]
             direction LR
             GMAP2["gmap<br/><i>pairwise<br/></i>"]
             MM2["minimap2<br/><i>splice mode</i>"]
