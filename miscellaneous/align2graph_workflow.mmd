@@ -38,7 +38,7 @@ flowchart TD
         UNMAPPED -- "Yes" --> NEXTG --> GMAP
     end
 
-    MATCHED["Placement coordinates<br/><i>chr · start · end · strand</i>"]
+    MATCHED["genome coordinates<br/><i>chr · start · end · strand</i>"]
 
     BEDTOOLS["bedtools intersect<br/><i>overlap hit vs. pangenome haploblocks</i>"]
 
@@ -46,7 +46,7 @@ flowchart TD
         direction TB
         EXTRACT["AGC getctg<br/><i>extract haploblock sequences<br/>from pangenome genomes</i>"]
 
-        subgraph ALIGNER ["Re-alignment"]
+        subgraph ALIGNER ["Range alignment [optional]"]
             direction LR
             GMAP2["gmap<br/><i>pairwise<br/>single hit</i>"]
             MM2["minimap2<br/><i>splice mode<br/>primary hit</i>"]
