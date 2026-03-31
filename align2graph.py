@@ -9,8 +9,14 @@
 # Copyright [2024-26] Estacion Experimental de Aula Dei-CSIC
 
 # %%
-MINIMAP2_N_DEFAULT = 20
 
+# ==========================================================
+# GLOBAL VARIABLES
+# ==========================================================
+MINIMAP2_N_DEFAULT = 20
+# Default number of secondary alignments for minimap2
+# This is actually used for minimap2 sam building (anno genes on Morex) that anchorwave needs
+# to build the graph. Keeping it also for aligning to ranges.
 
 def parse_fasta_file(fasta, verbose=False):
     """Takes a FASTA filename and parses sequence names before 1st space.
@@ -268,7 +274,10 @@ def align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
         return ";".join(agc_ranges)
 
     def keep_non_overlapping_ranges(range_results):
-        """Keeps non-overlapping graph ranges; preserves input order."""
+        """Keep only non-overlapping ranges while preserving the original order.
+        Overlap is checked only within the same chromosome and genome, and when two intervals overlap the first one is kept.
+        This avoids redundant nearby hits in `graph_ranges` after re-alignment."""
+
         kept = []
         kept_parsed = []
 
@@ -975,6 +984,7 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_fold
     best_range_width = 0
     
     # Clean up path to avoid double slashes
+    # Alredy happened to me in the past :')
     bed_folder_path = bed_folder_path.rstrip('/')
     
     chrom = gmap_match['chrom']
@@ -1501,7 +1511,7 @@ def process_sequences_serial(args):
                 if matching_result:
                     # Try to find graph coordinates for this existing match (don't re-run gmap)
                     # This would require calling get_overlap_ranges_* functions
-                    # For now, just output the basic match range with * marker (deferred graph lookup)
+                    # For now, just output the basic match range with * marker
                     range_with_star = f"{matching_result['chrom']}@{genome_to_check}:{matching_result['start']}-{matching_result['end']}({matching_result['strand']})*"
                     force_ranges_results[seqname].append(range_with_star)
                     
