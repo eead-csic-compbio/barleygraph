@@ -14,11 +14,11 @@
 # GLOBAL VARIABLES
 # ==========================================================
 MINIMAP2_N_DEFAULT = 20
-PADDING_PERCENT_DEFAULT = 0.05
-MIN_PADDING_DEFAULT = 100
 # Default number of secondary alignments for minimap2
 # This is actually used for minimap2 sam building (anno genes on Morex) that anchorwave needs
 # to build the graph. Keeping it also for aligning to ranges.
+PADDING_PERCENT_DEFAULT = 0.05
+MIN_PADDING_DEFAULT = 1000
 
 def parse_fasta_file(fasta, verbose=False):
     """Takes a FASTA filename and parses sequence names before 1st space.
