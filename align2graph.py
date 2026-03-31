@@ -14,6 +14,8 @@
 # GLOBAL VARIABLES
 # ==========================================================
 MINIMAP2_N_DEFAULT = 20
+PADDING_PERCENT_DEFAULT = 0.05
+MIN_PADDING_DEFAULT = 100
 # Default number of secondary alignments for minimap2
 # This is actually used for minimap2 sam building (anno genes on Morex) that anchorwave needs
 # to build the graph. Keeping it also for aligning to ranges.
@@ -697,8 +699,8 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,genomes,bed_folder_path,
                                     bstart = int(bed_data[1])
                                     bend = int(bed_data[2])
                                     block_length = bend - bstart
-                                    padding = int(block_length * 0.05)
-                                    padding = max(padding, 1000)
+                                    padding = int(block_length * PADDING_PERCENT_DEFAULT)
+                                    padding = max(padding, MIN_PADDING_DEFAULT)
                                     padded_start = max(0, bstart - padding)
                                     padded_end = bend + padding
                                     agc_range = f'{bed_data[0]}@{gen}:{padded_start}-{padded_end}'
@@ -1090,7 +1092,7 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_fold
                                     bstart = int(bed_data[1])
                                     bend = int(bed_data[2])
                                     block_length = bend - bstart
-                                    padding = int(block_length * 0.05)
+                                    padding = int(block_length * PADDING_PERCENT_DEFAULT)
                                     padded_start = max(0, bstart - padding)
                                     padded_end = bend + padding
                                     padded_range = f'{bed_data[0]}@{key_genome}:{padded_start}-{padded_end}'
