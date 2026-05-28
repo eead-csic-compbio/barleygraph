@@ -742,7 +742,7 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,genomes,bed_folder_path,
                 f'{ref_chr}\t{ref_start}\t{ref_end}\t{strand}\t'
                 f'{genome}\t{chrom}\t{start}\t{end}\t{strand}\t{ident}\t{cover}\t{mult_mappings}\t')
             # Only return graph ranges if add_ranges was requested
-            all_ranges = best_match if (best_match and aligner_tool) else ""
+            all_ranges = best_match if (best_match and aligner_tool) else "."
         else:
             match_tsv = f'.\t.\t.\t.\t{genome}\t{chrom}\t{start}\t{end}\t{strand}\t{ident}\t{cover}\t{mult_mappings}\t'
             all_ranges = ""
