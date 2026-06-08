@@ -1,2 +1,2 @@
-__version__ = '2af5f9a'
-__versiondate__ = '2026-05-22'
+__version__ = '8bbfb5f'
+__versiondate__ = '2026-05-28'
