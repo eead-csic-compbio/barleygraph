@@ -1,0 +1,3 @@
+
+# Pan20
+for s in {9..28}; do export sample=$s; perl -ane 'if(/^#CHROM/){ print "\n>$F[$ENV{sample}]\n" } next if(/^#/); if($F[$ENV{sample}] eq "."){ print "-" } else {print chr($F[$ENV{sample}]+65)}' Pan20_merge_proali.h.vcf; done > Pan20_merge_proali.h.fasta
