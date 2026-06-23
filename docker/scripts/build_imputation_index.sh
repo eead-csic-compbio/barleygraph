@@ -5,22 +5,48 @@
 # Determine the base directory for the project
 if [ -d "./Pan20/" ]; then
     PHG_PROJECT_DIR="./Pan20/"
+    PANGENOME_NAME="Pan20"
+    
+    # For Pan20, ask which variant to build
+    echo "Pan20 found. Choose alignment method:"
+    echo "1) gmap-geno"
+    echo "2) mmap-pro"
+    read -p "Enter choice (1 or 2): " VARIANT_CHOICE
+    
+    if [ "$VARIANT_CHOICE" == "1" ]; then
+        VARIANT="gmap-geno"
+    elif [ "$VARIANT_CHOICE" == "2" ]; then
+        VARIANT="mmap-pro"
+    else
+        echo "ERROR: Invalid choice. Please enter 1 or 2."
+        exit 1
+    fi
+    
 elif [ -d "./Med13/" ]; then
     PHG_PROJECT_DIR="./Med13/"
+    PANGENOME_NAME="Med13"
+    VARIANT=""
 else
-    echo "ERROR: Neither ./Pan/ nor ./Med13/ directories exist."
+    echo "ERROR: Neither ./Pan20/ nor ./Med13/ directories exist."
     exit 1
 fi
-# Store name of pangenome (folder name)
-PANGENOME_NAME=$(basename "${PHG_PROJECT_DIR}")
 
 # PHG Database Directories (Derived from project dir)
 DB_PATH="${PHG_PROJECT_DIR}/vcf_dbs"
-OUTPUT_BASE_DIR="${PHG_PROJECT_DIR}/output"
+
+# For Pan20 variants, use variant-specific output directories
+if [ -n "$VARIANT" ]; then
+    OUTPUT_BASE_DIR="${PHG_PROJECT_DIR}/${VARIANT}"
+    INDEX_PREFIX="${PANGENOME_NAME}_${VARIANT}"
+else
+    OUTPUT_BASE_DIR="${PHG_PROJECT_DIR}/output"
+    INDEX_PREFIX="${PANGENOME_NAME}"
+fi
+
 INDEX_OUTPUT_DIR="${OUTPUT_BASE_DIR}"
 
 # Define the full path for the output index file
-ROPEBWT_INDEX="${INDEX_OUTPUT_DIR}/${PANGENOME_NAME}.fmd"
+ROPEBWT_INDEX="${INDEX_OUTPUT_DIR}/${INDEX_PREFIX}.fmd"
 
 # Default settings
 DEFAULT_THREADS=8
@@ -77,7 +103,7 @@ else
 fi
 
 
-echo "Starting PHG RopeBWT Index Build for Pangenome: ${PANGENOME_NAME}"
+echo "Starting PHG RopeBWT Index Build for Pangenome: ${PANGENOME_NAME}${VARIANT:+ ($VARIANT)}"
 echo "Threads: ${THREADS}"
 echo "DB Path: ${DB_PATH}"
 echo "Output Index: ${ROPEBWT_INDEX}"
@@ -91,7 +117,7 @@ phg rope-bwt-index \
     --db-path "${DB_PATH}" \
     --hvcf-dir "${DB_PATH}/hvcf_files/" \
     --output-dir "${INDEX_OUTPUT_DIR}" \
-    --index-file-prefix "${PANGENOME_NAME}" \
+    --index-file-prefix "${INDEX_PREFIX}" \
     --threads "${THREADS}" \
     --delete-fmr-index \
     --conda-env-prefix /opt/conda/envs/phgv2.4/
