@@ -2,22 +2,24 @@
 use strict;
 use warnings;
 
-# input files, edit as needed
-my $VCFfile = 'Med13.gbs.vcf.gz';
-my $sampleFile = 'Med13.samples.figure';
 my $MINDEPTH = 5;
 
-if(!-e $VCFfile) {
-  die "# please edit \$VCFfile in script to point to a .vcf.gz file, https://github.com/eead-csic-compbio/barleygraph/releases/download/Med13.gbs/Med13.gbs.vcf.gz for instance\n";
-} elsif(!-e $sampleFile) {
-  die "# please edit \$sampleFile in script to point to a text file with samples in .vcf.gz file\n";
+if(!$ARGV[3]) {
+  die "# usage: $0 <input VCF> <input sample file> <out dist file> <out count file>\n"
 }
 
-# output files
-my $distFile = "Med13.gbs.depth$MINDEPTH.dist";
-my $countFile = "Med13.gbs.depth$MINDEPTH.count";
-open(DIST,">$distFile");
-open(COUNT,">$countFile");
+my ($VCFfile, $sampleFile, $distFile, $countFile) = @ARGV;
+
+if(!-e $VCFfile) {
+  die "# ERROR: need a valid .vcf.gz file\n";
+} elsif(!-e $sampleFile) {
+  die "# ERROR: need a valid text file with samples in .vcf.gz file\n";
+}
+
+open(DIST,">$distFile") || 
+  die "# ERROR: need a valid dist matrix file path\n";
+open(COUNT,">$countFile") || 
+  die "# ERROR: need a valid count matrix file path\n";
 
 ####################################################
 
