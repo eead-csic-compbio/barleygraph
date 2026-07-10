@@ -5,7 +5,8 @@ use warnings;
 my $MINDEPTH = 5;
 
 if(!$ARGV[3]) {
-  die "# usage: $0 <input VCF> <input sample file> <out dist file> <out count file>\n"
+  die "# usage: $0 <input VCF> <input sample file> <out dist file> <out count file>\n\n" .
+    "# example: perl gbs_distance.pl Med13.gbs.vcf.gz Med13.samples.figure Med13.gbs.depth5.dist Med13.gbs.depth5.count\n";
 }
 
 my ($VCFfile, $sampleFile, $distFile, $countFile) = @ARGV;
