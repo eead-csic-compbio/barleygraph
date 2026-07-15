@@ -4,7 +4,5 @@ Pan20/
 Pan20.gz
 Pan20.tgz
 Example_Ara.tgz
-graphs/
 DOCKER_USAGE.md
-align2graph.py
 docker/scripts/hvcf2bed.py
