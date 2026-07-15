@@ -6,13 +6,13 @@
 if [ -d "./Pan20/" ]; then
     PHG_PROJECT_DIR="./Pan20/"
     PANGENOME_NAME="Pan20"
-    
+
     # For Pan20, ask which variant to build
     echo "Pan20 found. Choose alignment method:"
     echo "1) gmap-geno"
     echo "2) mmap-pro"
     read -p "Enter choice (1 or 2): " VARIANT_CHOICE
-    
+
     if [ "$VARIANT_CHOICE" == "1" ]; then
         VARIANT="gmap-geno"
     elif [ "$VARIANT_CHOICE" == "2" ]; then
@@ -21,13 +21,18 @@ if [ -d "./Pan20/" ]; then
         echo "ERROR: Invalid choice. Please enter 1 or 2."
         exit 1
     fi
-    
+
 elif [ -d "./Med13/" ]; then
     PHG_PROJECT_DIR="./Med13/"
     PANGENOME_NAME="Med13"
     VARIANT=""
+
+elif [ -d "./Example_Ara/" ]; then
+    PHG_PROJECT_DIR="./Example_Ara/"
+    PANGENOME_NAME="Example_Ara"
+    VARIANT=""
 else
-    echo "ERROR: Neither ./Pan20/ nor ./Med13/ directories exist."
+    echo "ERROR: None of ./Pan20/, ./Med13/, or ./Example_Ara/ directories exist."
     exit 1
 fi
 
@@ -132,11 +137,13 @@ fi
 if [ -f "${ROPEBWT_INDEX}" ]; then
     echo "--------------------------------------------------------"
     echo "PHG Index built successfully."
+    # Create the gmap_db folder if it doesn't exist yet
+    mkdir -p "${DB_PATH}/gmap_db/"
     # Move it to gmap_db folder to keep it for future use
     mv ${ROPEBWT_INDEX} ${DB_PATH}/gmap_db/
     echo "Moved index to: ${DB_PATH}/gmap_db/"
     # but keep a direct link to use it
-    ln -s ${DB_PATH}/gmap_db/$(basename ${ROPEBWT_INDEX}) ${ROPEBWT_INDEX}
+    ln -sf "$(pwd)/${DB_PATH}/gmap_db/$(basename ${ROPEBWT_INDEX})" "$(pwd)/${ROPEBWT_INDEX}"
     echo "Index link created at:"
     echo "${ROPEBWT_INDEX}"
     echo "Removed intermediate files."

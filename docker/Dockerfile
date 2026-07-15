@@ -1,7 +1,7 @@
 FROM continuumio/miniconda3
 
 LABEL authors="Joan Sarria, Bruno Contreras Moreira"
-LABEL description="Container with align2graph, PHG and selected pangenome graph [Med13, Pan20]"
+LABEL description="Container with align2graph, PHG and selected pangenome graph [Med13, Pan20, Example_Ara]"
 LABEL license="GPLv3"
 LABEL maintainers="compbio@eead.csic.es"
 LABEL org.opencontainers.image.source https://github.com/OWNER/REPO
@@ -26,10 +26,11 @@ RUN apt update && apt install --no-install-recommends -y \
 #    | awk -F': ' '/browser_download_url/ && /\.tar/ {gsub(/"/, "", $(NF)); system("wget " $(NF))}' \
 #    && tar -xvf PHGv2-v2.4.tar
 
-# PHG v2.4.72.227 - Download and extract
-RUN wget -qO - https://api.github.com/repos/maize-genetics/phg_v2/releases/tags/2.4.72.227 \
+# PHG v2.4 (last 2.4 release) - Download and extract
+RUN wget -qO - https://api.github.com/repos/maize-genetics/phg_v2/releases/tags/2.4.75.230 \
     | awk -F': ' '/browser_download_url/ && /\.tar/ {gsub(/"/, "", $(NF)); system("wget " $(NF))}' \
-    && tar -xvf PHGv2-v2.4.tar
+    && tar -xvf *.tar \
+    && rm *.tar
 
 ENV PHGPATH /barleygraph/phg/bin
 
@@ -71,13 +72,19 @@ ADD ${graph}.tgz .
 COPY test.fa test.fa
 
 # Sample list files - download from GitHub repository based on graph type
-RUN wget -qO samplelist.tsv https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/graphs/${graph}_samplelist.tsv
+# RUN wget -qO samplelist.tsv https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/graphs/${graph}_samplelist.tsv
+# Get it locally untill all public
+COPY graphs/${graph}_samplelist.tsv samplelist.tsv
 
 # scripts - download from GitHub repository
 RUN mkdir -p python_scripts
 RUN wget -qO gmap_build.sh https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/gmap_build.sh
-RUN wget -qO build_imputation_index.sh https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/build_imputation_index.sh
-RUN wget -qO imputation.sh https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/imputation.sh
+# RUN wget -qO build_imputation_index.sh https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/build_imputation_index.sh
+# Local placegolder
+COPY docker/scripts/build_imputation_index.sh build_imputation_index.sh
+#RUN wget -qO imputation.sh https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/imputation.sh
+# Local placeholder
+COPY docker/scripts/imputation.sh imputation.sh
 RUN wget -qO python_scripts/haplopainting.py https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/haplopainting.py
 RUN wget -qO python_scripts/hvcf2bed.py https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/hvcf2bed.py
 COPY docker/scripts/index_${graph} index
