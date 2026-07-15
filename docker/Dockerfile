@@ -46,7 +46,7 @@ RUN rm gmap-gsnap-${GVER}.tar.gz
 
 # align2graph 
 RUN wget https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/refs/heads/main/align2graph.py
-RUN wget https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/refs/heads/main/version.py# Dummy until all updated in github
+RUN wget https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/refs/heads/main/version.py
 RUN chmod +x align2graph.py
 RUN mv align2graph.py align2graph
 
