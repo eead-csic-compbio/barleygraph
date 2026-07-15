@@ -1,7 +1,7 @@
 FROM continuumio/miniconda3
 
 LABEL authors="Joan Sarria, Bruno Contreras Moreira"
-LABEL description="Container with align2graph, PHG and selected pangenome graph [Med13, Pan20]"
+LABEL description="Container with align2graph, PHG and selected pangenome graph [Med13, Pan20, Example_Ara]"
 LABEL license="GPLv3"
 LABEL maintainers="compbio@eead.csic.es"
 LABEL org.opencontainers.image.source https://github.com/OWNER/REPO
@@ -21,10 +21,17 @@ RUN apt update && apt install --no-install-recommends -y \
     nano \
     && apt clean && apt purge && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# PHG v2.4.72.227 - Download and extract
-RUN wget -qO - https://api.github.com/repos/maize-genetics/phg_v2/releases/tags/2.4.72.227 \
+# PHG v2.4.72.229 - Download and extract
+#RUN wget -qO - https://api.github.com/repos/maize-genetics/phg_v2/releases/tags/2.4.74.229\
+#    | awk -F': ' '/browser_download_url/ && /\.tar/ {gsub(/"/, "", $(NF)); system("wget " $(NF))}' \
+#    && tar -xvf PHGv2-v2.4.tar
+
+# PHG v2.4 (last 2.4 release) - Download and extract
+RUN wget -qO - https://api.github.com/repos/maize-genetics/phg_v2/releases/tags/2.4.75.230 \
     | awk -F': ' '/browser_download_url/ && /\.tar/ {gsub(/"/, "", $(NF)); system("wget " $(NF))}' \
-    && tar -xvf PHGv2-v2.4.tar
+    && tar -xvf *.tar \
+    && rm *.tar
+
 ENV PHGPATH /barleygraph/phg/bin
 
 # PHG and python deps
@@ -43,7 +50,11 @@ RUN tar xfz gmap-gsnap-${GVER}.tar.gz && cd gmap-${GVER} && ./configure --prefix
 RUN rm gmap-gsnap-${GVER}.tar.gz
 
 # align2graph 
-RUN wget https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/refs/heads/main/align2graph.py
+#RUN wget https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/refs/heads/main/align2graph.py
+#Get from local meanwhile, will swap to GitHub once the script is public
+COPY docker/scripts/align2graph.py align2graph.py
+COPY version.py ./
+# Dummy until all updated in github
 RUN chmod +x align2graph.py
 RUN mv align2graph.py align2graph
 
@@ -52,22 +63,31 @@ LABEL graph=$graph
 RUN echo $graph
 
 # graphs, config and bits - download from GitHub repository
-RUN wget -qO graph.yaml https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/graphs/${graph}.yaml
-ADD ${graph}.tgz $graph
+#RUN wget -qO graph.yaml https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/graphs/${graph}.yaml
+# Getting them locally, will swap to GitHub once the graphs are public
+COPY graphs/Pan20_gmap-geno.yaml ./
+COPY graphs/Pan20_mmap-pro.yaml ./
+ADD ${graph}.tgz .
 # Placeholder, until the graph.tgz files are public and available at github
 COPY test.fa test.fa
 
 # Sample list files - download from GitHub repository based on graph type
-RUN wget -qO samplelist.tsv https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/graphs/${graph}_samplelist.tsv
+# RUN wget -qO samplelist.tsv https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/graphs/${graph}_samplelist.tsv
+# Get it locally untill all public
+COPY graphs/${graph}_samplelist.tsv samplelist.tsv
 
 # scripts - download from GitHub repository
 RUN mkdir -p python_scripts
 RUN wget -qO gmap_build.sh https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/gmap_build.sh
-RUN wget -qO build_imputation_index.sh https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/build_imputation_index.sh
-RUN wget -qO imputation.sh https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/imputation.sh
+# RUN wget -qO build_imputation_index.sh https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/build_imputation_index.sh
+# Local placegolder
+COPY docker/scripts/build_imputation_index.sh build_imputation_index.sh
+#RUN wget -qO imputation.sh https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/imputation.sh
+# Local placeholder
+COPY docker/scripts/imputation.sh imputation.sh
 RUN wget -qO python_scripts/haplopainting.py https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/haplopainting.py
 RUN wget -qO python_scripts/hvcf2bed.py https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/hvcf2bed.py
-COPY index_${graph} index
+COPY docker/scripts/index_${graph} index
 
 # Ensure all scripts are executable
 RUN chmod +x gmap_build.sh build_imputation_index.sh imputation.sh index python_scripts/haplopainting.py python_scripts/hvcf2bed.py

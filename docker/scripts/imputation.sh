@@ -8,31 +8,77 @@
 # Determine the base directory for the project
 if [ -d "./Pan20/" ]; then
     PHG_PROJECT_DIR="./Pan20/"
+    PANGENOME_NAME="Pan20"
+    
+    # For Pan20, ask which variant to use
+    echo "Pan20 found. Choose alignment method:"
+    echo "1) gmap-geno"
+    echo "2) mmap-pro"
+    read -p "Enter choice (1 or 2): " VARIANT_CHOICE
+    
+    if [ "$VARIANT_CHOICE" == "1" ]; then
+        VARIANT="gmap-geno"
+    elif [ "$VARIANT_CHOICE" == "2" ]; then
+        VARIANT="mmap-pro"
+    else
+        echo "ERROR: Invalid choice. Please enter 1 or 2."
+        exit 1
+    fi
+    
 elif [ -d "./Med13/" ]; then
     PHG_PROJECT_DIR="./Med13/"
+    PANGENOME_NAME="Med13"
+    VARIANT=""
+
+elif [ -d "./Example_Ara/" ]; then
+    PHG_PROJECT_DIR="./Example_Ara/"
+    PANGENOME_NAME="Example_Ara"
+    VARIANT=""
+
 else
-    echo "ERROR: Neither ./Pan20/ nor ./Med13/ directories exist."
+    echo "ERROR: Neither ./Pan20/ nor ./Med13/ nor ./Example_Ara/ directories exist."
     exit 1
 fi
 
-# Store name of pangenome (folder name)
-PANGENOME_NAME=$(basename "${PHG_PROJECT_DIR}")
-
 # PHG Database Directories (Derived from project dir)
 HVCF_DIR="${PHG_PROJECT_DIR}/vcf_dbs/hvcf_files"
-OUTPUT_BASE_DIR="${PHG_PROJECT_DIR}/output"
+
+# For Pan20 variants, use variant-specific output directories
+if [ -n "$VARIANT" ]; then
+    OUTPUT_BASE_DIR="${PHG_PROJECT_DIR}/${VARIANT}"
+    INDEX_PREFIX="${PANGENOME_NAME}_${VARIANT}"
+else
+    OUTPUT_BASE_DIR="${PHG_PROJECT_DIR}/output"
+    INDEX_PREFIX="${PANGENOME_NAME}"
+fi
+
 IMPUTED_VCF_DIR="${OUTPUT_BASE_DIR}/imputed_vcf_files"
 
 # Ensure output directories exist
 mkdir -p "${OUTPUT_BASE_DIR}"   # Actually redundant, but safe
 mkdir -p "${IMPUTED_VCF_DIR}"
 
-# Pre-built Index and Reference (You should update these paths)
-ROPEBWT_INDEX="${OUTPUT_BASE_DIR}/${PANGENOME_NAME}.fmd"
-REFERENCE_GENOME="${PHG_PROJECT_DIR}/data/MorexV3.fa"
+# Extract the Reference genotype name dynamically from samplelist.tsv
+SAMPLELIST="./samplelist.tsv"
+if [ ! -f "$SAMPLELIST" ]; then
+    echo "ERROR: ${SAMPLELIST} not found. Cannot determine Reference genome."
+    exit 1
+fi
+
+REFERENCE_NAME=$(awk '$3=="Reference" {print $2}' "$SAMPLELIST" | head -n 1)
+
+if [ -z "$REFERENCE_NAME" ]; then
+    echo "ERROR: Could not find a genotype marked as 'Reference' in ${SAMPLELIST}."
+    exit 1
+fi
+
+echo "Detected Reference genome: ${REFERENCE_NAME}"
+
+# Pre-built Index and Reference
+ROPEBWT_INDEX="${OUTPUT_BASE_DIR}/${INDEX_PREFIX}.fmd"
+REFERENCE_GENOME="${PHG_PROJECT_DIR}/data/${REFERENCE_NAME}.fa"
 
 # Ensure required files exist
-
 if [ ! -f "${ROPEBWT_INDEX}" ]; then
     echo "ERROR: RopeBWT index not found at ${ROPEBWT_INDEX}. Please build the index first."
     echo "Run build_imputation_index.sh script."
@@ -41,8 +87,8 @@ fi
 
 if [ ! -f "${REFERENCE_GENOME}" ]; then
     echo "ERROR: Reference genome not found at ${REFERENCE_GENOME}."
-    echo "Extracting it and saving to ${REFERENCE_GENOME}..."
-    agc getset "${PHG_PROJECT_DIR}/vcf_dbs/assemblies.agc" MorexV3 > "${REFERENCE_GENOME}"
+    echo "Extracting ${REFERENCE_NAME} from AGC archive and saving to ${REFERENCE_GENOME}..."
+    agc getset "${PHG_PROJECT_DIR}/vcf_dbs/assemblies.agc" "${REFERENCE_NAME}" > "${REFERENCE_GENOME}"
 fi
 
 # --- Main Script Execution ---
@@ -101,6 +147,9 @@ else
 fi
 
 echo "Starting PHG pipeline"
+echo "Pangenome: ${PANGENOME_NAME}${VARIANT:+ ($VARIANT)}"
+echo "Index: ${ROPEBWT_INDEX}"
+echo "Imputed VCF output: ${IMPUTED_VCF_DIR}"
 echo "--------------------------------------------------------"
 
 
@@ -135,6 +184,7 @@ phg find-paths \
     --output-dir "${IMPUTED_VCF_DIR}"
 
 echo "PHG Imputation Completed. Imputed VCF files are located in: ${IMPUTED_VCF_DIR}"
+echo "Index used: ${ROPEBWT_INDEX}"
 echo "--------------------------------------------------------"
 
 # Remove intermediate files to save space
