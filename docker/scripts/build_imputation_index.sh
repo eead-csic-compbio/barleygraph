@@ -9,14 +9,14 @@ if [ -d "./Pan20/" ]; then
 
     # For Pan20, ask which variant to build
     echo "Pan20 found. Choose alignment method:"
-    echo "1) gmap-geno"
-    echo "2) mmap-pro"
+    echo "1) gmap_geno"
+    echo "2) mmap_pro"
     read -p "Enter choice (1 or 2): " VARIANT_CHOICE
 
     if [ "$VARIANT_CHOICE" == "1" ]; then
-        VARIANT="gmap-geno"
+        VARIANT="gmap_geno"
     elif [ "$VARIANT_CHOICE" == "2" ]; then
-        VARIANT="mmap-pro"
+        VARIANT="mmap_pro"
     else
         echo "ERROR: Invalid choice. Please enter 1 or 2."
         exit 1
@@ -117,17 +117,24 @@ echo "--------------------------------------------------------"
 # Increase ram to avoid Java heap space issues
 export _JAVA_OPTIONS="-Xmx256g"
 
-# 2. Execute phg rope-bwt-index
+# 2. Determine hvcf directory
+if [ "${PANGENOME_NAME}" == "Pan20" ]; then
+    HVCF_DIR="${PHG_PROJECT_DIR}/${VARIANT}/"
+else
+    HVCF_DIR="${DB_PATH}/hvcf_files/"
+fi
+
+# 3. Execute phg rope-bwt-index
 phg rope-bwt-index \
     --db-path "${DB_PATH}" \
-    --hvcf-dir "${DB_PATH}/hvcf_files/" \
+    --hvcf-dir "${HVCF_DIR}" \
     --output-dir "${INDEX_OUTPUT_DIR}" \
     --index-file-prefix "${INDEX_PREFIX}" \
     --threads "${THREADS}" \
     --delete-fmr-index \
     --conda-env-prefix /opt/conda/envs/phgv2.4/
 
-# 3. Check for successful completion
+# 4. Check for successful completion
 if [ $? -ne 0 ]; then
     echo "ERROR: phg rope-bwt-index failed. Check the logs above."
     exit 1

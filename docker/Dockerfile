@@ -55,7 +55,12 @@ LABEL graph=$graph
 RUN echo $graph
 
 # graphs, config and bits - download from GitHub repository
-RUN wget -qO graph.yaml https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/graphs/${graph}.yaml
+RUN if [ "${graph}" = "Pan20" ]; then \
+        wget -q https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/graphs/Pan20_gmap-geno.yaml && \
+        wget -q https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/graphs/Pan20_mmap-pro.yaml; \
+    else \
+        wget -q https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/graphs/${graph}.yaml; \
+    fi
 ADD ${graph}.tgz .
 # Placeholder, until the graph.tgz files are public and available at github
 COPY test.fa test.fa
