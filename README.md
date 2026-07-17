@@ -16,16 +16,25 @@ sequence alignments are performed with [GMAP](http://research-pub.gene.com/gmap)
 genomic sequences and transcripts. GMAP matches and precomputed graph ranges are intersected with
 [BEDTOOLS](https://bedtools.readthedocs.io/en/latest).
 
-Two graphs are available, which include a series of genome sequences which are scanned hierarchically;
-the scan stops with the first match. Note that in both cases the reference is **MorexV3** as annotated 
+### Available Graphs (Pan20 Release)
+
+This release includes the **Pan20** graph, which contains a series of genome sequences scanned hierarchically; 
+the scan stops with the first match. Note that the reference is **MorexV3** as annotated 
 at [IPK](https://galaxy-web.ipk-gatersleben.de/libraries/folders/Fa676e8f07209a3be/dataset/78efbc10d9dd2218):
 
 |graph|notes|genome names and scan order|
 |:----|:----|:-----------|
-|Med13|Merges 13 genomes of Mediterranean barley landraces|MorexV3, HOR_2830, HOR_1168, HOR_14121, GDB_136, HOR_3365, HOR_3474, HOR_13942, HOR_21599, HOR_12184, HOR_2779, HOR_10892, HOR_21595|
 |Pan20|Barley pangenome V1|MorexV3, Barke, HOR_9043, HOR_10350, HOR_3081, HOR_3365, Planet, HOR_7552, Akashinriki, OUN333, HOR_13942, HOR_13821, HOR_21599, Igri, Chiba, B1K-04-12, Du_Li_Huang, HOR_8148, GoldenPromise, Hockett|
 
-## How to to run BARLEYGRAPH
+---
+
+### Quick Start Guide
+
+**1. Pull the Docker Image**
+Download the specific Pan20 release snapshot from the GitHub Container Registry:
+```bash
+docker pull ghcr.io/eead-csic-compbio/barleygraph:Pan20-20260716
+```
 
 Several steps are required to run BARLEYGRAPH, depending if you want to do [mapping](https://github.com/eead-csic-compbio/barleygraph/edit/main/README.md#mapping) and/or [haplotype](https://github.com/eead-csic-compbio/barleygraph/edit/main/README.md#haplotype-analysis) analysis:
 
@@ -48,21 +57,18 @@ This is done outside the container, as indices are bulky; in Linux you could do 
 The container will first be downloaded if not found locally.
 The `index` command takes hours, over 8GB RAM and up to 163GB of disk, but it's only required the first time:
 
-    docker run --rm -v /path/to/local_gmap_db/:/gmap_db/ -it ghcr.io/eead-csic-compbio/barleygraph:pan20-20251008 index
+    docker run --rm -v /path/to/local_gmap_db/:/gmap_db/ -it ghcr.io/eead-csic-compbio/barleygraph:Pan20-20260716 index
 
-    # or instead for the Mediterranean barleys graph
-
-    docker run --rm -v /path/to/local_gmap_db/:/gmap_db/ -it ghcr.io/eead-csic-compbio/barleygraph:pan20-xxyyzz index
  
 ### 3. Map sequences in FASTA files [mapping]
 
 The first command line can be used to find out about available optional flags; the others are two examples:
 
-    docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it ghcr.io/eead-csic-compbio/barleygraph:pan20-20251008 align2graph
+    docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it ghcr.io/eead-csic-compbio/barleygraph:Pan20-20260716 align2graph
 
-    docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it ghcr.io/eead-csic-compbio/barleygraph:pan20-20251008 align2graph sequences.fa
+    docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it ghcr.io/eead-csic-compbio/barleygraph:Pan20-20260716 align2graph sequences.fa
 
-    docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it ghcr.io/eead-csic-compbio/barleygraph:pan20-20251008 align2graph --add_ranges sequences.fa
+    docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it ghcr.io/eead-csic-compbio/barleygraph:Pan20-20260716 align2graph --add_ranges sequences.fa
 
 ### 4. Mapping output
 
@@ -157,7 +163,7 @@ hvcf2bed Med13/vcf_dbs/hvcf_files/ -v  # Convert all files with verbose output
 
 Generate visual plots of haplotype blocks from h.vcf files showing how different samples' genomes are composed of pangenome haplotypes:
 
-> NOTE: You need to have all both pangenome and imputed .h.vcf files in the same folder. You may either move the imputed to Pan20/vcf_dbs/hvcf_files (or Med13/vcf_dbs/hvcf_files), the oposite (move the pangenome files into the output imputed files) or just create a new folder with soft links to group them up.
+> NOTE: You need to have all both pangenome and imputed .h.vcf files in the same folder. You may either move the imputed file to the folder with other pangenome files, the oposite (move the pangenome files into the output imputed files) or just create a new folder with soft links to group them up.
 
 ![Haplopainting_example](https://github.com/eead-csic-compbio/barleygraph/blob/main/miscellaneous/chr4H_FULL_haplotype_painting.png)
 
@@ -195,7 +201,7 @@ haplopainting --hvcf-folder Med13/vcf_dbs/hvcf_files/ --samples-list samplelist.
 
 ## Current status:
 
-As soon as Med13 is released, both Pan20 and Med13 will be available publically at this repository. At this moment, you need to own Pan20.tgz and Med20.tgz to use this docker.
+Pan20 at this moment is made up with mmap_pro or gmap_geno modes (more info in ongoing paper publication). You also have an Example dataset made of few base pairs of two arabidopsis chromosomes, useful to test some utilities and build new ones.
 
 ## Troubleshooting
 
@@ -205,6 +211,18 @@ If the `docker` commands above fail with an error similar to
 
 please check the instructions at https://docs.docker.com/engine/install/linux-postinstall
 
+## For developers
+
+Debuging the container may be thoug, its convenient to use a example toyset. Running:
+```bash
+docker pull ghcr.io/eead-csic-compbio/barleygraph:Example_Ara-20260716
+```
+You are getting a set of few arabidopsis genomes croped in some kb for chr1 & chr2 that are convinient to use.
+To build an image using the docker file you may find in this github repo, you only need a local file Example_Ara.tgz, which can not be uploaded here, but that you can export from the pulled docker. You might try:
+
+docker run --rm   -v /scratch/PHG_barleymap/barleygraph/graphs/Ara_toyset/gmap_db/:/gmap_db/   -it barleygraph:example_ara   /bin/bash
+
+docker save ghcr.io/eead-csic-compbio/barleygraph:Example_Ara-20260716 > Example_Ara.tgz
 
 ## References
 

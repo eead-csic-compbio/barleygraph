@@ -120,6 +120,8 @@ export _JAVA_OPTIONS="-Xmx256g"
 # 2. Determine hvcf directory
 if [ "${PANGENOME_NAME}" == "Pan20" ]; then
     HVCF_DIR="${PHG_PROJECT_DIR}/${VARIANT}/"
+    mkdir -p "${PHG_PROJECT_DIR}/vcf_dbs/"
+    mv ${PHG_PROJECT_DIR}/assemblies.agc ${PHG_PROJECT_DIR}/vcf_dbs/
 else
     HVCF_DIR="${DB_PATH}/hvcf_files/"
 fi
