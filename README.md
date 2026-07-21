@@ -57,18 +57,18 @@ This is done outside the container, as indices are bulky; in Linux you could do 
 The container will first be downloaded if not found locally.
 The `index` command takes hours, over 8GB RAM and up to 163GB of disk, but it's only required the first time:
 
-    docker run --rm -v /path/to/local_gmap_db/:/gmap_db/ -it ghcr.io/eead-csic-compbio/barleygraph:Pan20-20260716 index
+    docker run --rm -v /path/to/local_gmap_db/:/gmap_db/ -it ghcr.io/eead-csic-compbio/barleygraph:Pan20-20260721 index
 
  
 ### 3. Map sequences in FASTA files [mapping]
 
 The first command line can be used to find out about available optional flags; the others are two examples:
 
-    docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it ghcr.io/eead-csic-compbio/barleygraph:Pan20-20260716 align2graph
+    docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it ghcr.io/eead-csic-compbio/barleygraph:Pan20-20260721 align2graph
 
-    docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it ghcr.io/eead-csic-compbio/barleygraph:Pan20-20260716 align2graph sequences.fa
+    docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it ghcr.io/eead-csic-compbio/barleygraph:Pan20-20260721 align2graph sequences.fa
 
-    docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it ghcr.io/eead-csic-compbio/barleygraph:Pan20-20260716 align2graph --add_ranges sequences.fa
+    docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it ghcr.io/eead-csic-compbio/barleygraph:Pan20-20260721 align2graph --add_ranges sequences.fa
 
 ### 4. Mapping output
 
@@ -215,14 +215,14 @@ please check the instructions at https://docs.docker.com/engine/install/linux-po
 
 Debuging the container may be thoug, its convenient to use a example toyset. Running:
 ```bash
-docker pull ghcr.io/eead-csic-compbio/barleygraph:Example_Ara-20260716
+docker pull ghcr.io/eead-csic-compbio/barleygraph:Example_Ara-20260721
 ```
 You are getting a set of few arabidopsis genomes croped in some kb for chr1 & chr2 that are convinient to use.
 To build an image using the docker file you may find in this github repo, you only need a local file Example_Ara.tgz, which can not be uploaded here, but that you can export from the pulled docker. You might try:
 
 docker run --rm   -v /scratch/PHG_barleymap/barleygraph/graphs/Ara_toyset/gmap_db/:/gmap_db/   -it barleygraph:example_ara   /bin/bash
 
-docker save ghcr.io/eead-csic-compbio/barleygraph:Example_Ara-20260716 > Example_Ara.tgz
+docker save ghcr.io/eead-csic-compbio/barleygraph:Example_Ara-20260721 > Example_Ara.tgz
 
 ## References
 
