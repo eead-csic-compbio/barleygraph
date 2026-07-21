@@ -63,17 +63,17 @@ mkdir -p "${INDEX_OUTPUT_DIR}"
 # --- Main Script Execution ---
 
 # Check if it is already built and found in gmap_db or at output location
-if [ -f "${DB_PATH}/gmap_db/$(basename ${ROPEBWT_INDEX})" ] || [ -f "${ROPEBWT_INDEX}" ]; then
+if [ -f "/gmap_db/$(basename ${ROPEBWT_INDEX})" ] || [ -f "${ROPEBWT_INDEX}" ]; then
     echo "PHG RopeBWT Index already exists at:"
-    if [ -f "${DB_PATH}/gmap_db/$(basename ${ROPEBWT_INDEX})" ]; then
-        echo "${DB_PATH}/gmap_db/$(basename ${ROPEBWT_INDEX})"
+    if [ -f "/gmap_db/$(basename ${ROPEBWT_INDEX})" ]; then
+        echo "/gmap_db/$(basename ${ROPEBWT_INDEX})"
     else
         echo "${ROPEBWT_INDEX}"
     fi
 
     # generate the symlink if not already present
     if [ ! -f "${ROPEBWT_INDEX}" ]; then
-        ln -s ${DB_PATH}/gmap_db/$(basename ${ROPEBWT_INDEX}) ${ROPEBWT_INDEX}
+        ln -s "/gmap_db/$(basename ${ROPEBWT_INDEX})" "${ROPEBWT_INDEX}"
         echo "Created symlink at: ${ROPEBWT_INDEX}"
     fi
 
@@ -147,12 +147,12 @@ if [ -f "${ROPEBWT_INDEX}" ]; then
     echo "--------------------------------------------------------"
     echo "PHG Index built successfully."
     # Create the gmap_db folder if it doesn't exist yet
-    mkdir -p "${DB_PATH}/gmap_db/"
+    mkdir -p "/gmap_db/"
     # Move it to gmap_db folder to keep it for future use
-    mv ${ROPEBWT_INDEX} ${DB_PATH}/gmap_db/
-    echo "Moved index to: ${DB_PATH}/gmap_db/"
+    mv "${ROPEBWT_INDEX}" "/gmap_db/"
+    echo "Moved index to: /gmap_db/"
     # but keep a direct link to use it
-    ln -sf "$(pwd)/${DB_PATH}/gmap_db/$(basename ${ROPEBWT_INDEX})" "$(pwd)/${ROPEBWT_INDEX}"
+    ln -sf "/gmap_db/$(basename ${ROPEBWT_INDEX})" "$(pwd)/${ROPEBWT_INDEX}"
     echo "Index link created at:"
     echo "${ROPEBWT_INDEX}"
     echo "Removed intermediate files."
