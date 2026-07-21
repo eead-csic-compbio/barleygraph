@@ -33,7 +33,7 @@ at [IPK](https://galaxy-web.ipk-gatersleben.de/libraries/folders/Fa676e8f07209a3
 **1. Pull the Docker Image**
 Download the specific Pan20 release snapshot from the GitHub Container Registry:
 ```bash
-docker pull ghcr.io/eead-csic-compbio/barleygraph:Pan20-20260716
+docker pull ghcr.io/eead-csic-compbio/barleygraph:Pan20-20260721
 ```
 
 Several steps are required to run BARLEYGRAPH, depending if you want to do [mapping](https://github.com/eead-csic-compbio/barleygraph/edit/main/README.md#mapping) and/or [haplotype](https://github.com/eead-csic-compbio/barleygraph/edit/main/README.md#haplotype-analysis) analysis:
