@@ -8,8 +8,8 @@ shipping with prebuilt PHG graphs of barley pangenomes and tools.
 ![PHG_database](https://github.com/eead-csic-compbio/barleygraph/blob/main/miscellaneous/Esquema_PHG.png)
 
 >    It is based on 2.4 phg version.
->
->    Find here the [2.4.69.224 release](https://github.com/maize-genetics/phg_v2/releases/tag/2.4.69.224).
+>    
+>    Find here the [2.4.75.230 release](https://github.com/maize-genetics/phg_v2/releases/tag/2.4.75.230).
 
 Inspired by [BARLEYMAP](https://barleymap.eead.csic.es),
 sequence alignments are performed with [GMAP](http://research-pub.gene.com/gmap), which supports both 
