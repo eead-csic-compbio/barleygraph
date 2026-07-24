@@ -6,3 +6,5 @@ Pan20.tgz
 Example_Ara.tgz
 DOCKER_USAGE.md
 docker/scripts/hvcf2bed.py
+graphs/build_Med13_database.sh
+graphs/build_Pan20_database.sh
