@@ -17,9 +17,12 @@ WORKDIR /barleygraph
 ## install system deps as root
 RUN apt update && apt install --no-install-recommends -y \
     build-essential \
-    openjdk-17-jdk-headless \
     nano \
     && apt clean && apt purge && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+## Add java via conda
+RUN conda install -c conda-forge openjdk=17 -y && \
+    conda clean -afy
 
 # PHG v2.4 (last 2.4 release) - Download and extract
 RUN wget -qO - https://api.github.com/repos/maize-genetics/phg_v2/releases/tags/2.4.75.230 \
@@ -41,7 +44,9 @@ ENV CONDA_DEFAULT_ENV phgv2.4
 ENV GVER 2013-08-31
 ENV GPATH /barleygraph/gmap-${GVER}/local
 RUN wget http://research-pub.gene.com/gmap/src/gmap-gsnap-${GVER}.tar.gz
-RUN tar xfz gmap-gsnap-${GVER}.tar.gz && cd gmap-${GVER} && ./configure --prefix=${GPATH} && make && make install && make clean
+RUN tar xfz gmap-gsnap-${GVER}.tar.gz && cd gmap-${GVER} && \
+    ./configure --prefix=${GPATH} CFLAGS="-O3 -Dstat64=stat -Wno-implicit-function-declaration -Wno-incompatible-pointer-types" && \
+    make && make install && make clean
 RUN rm gmap-gsnap-${GVER}.tar.gz
 
 # align2graph 
