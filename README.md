@@ -280,7 +280,7 @@ PHG databases are scalable and easy to modify. Adding new ```.h.vcf``` and ```.b
 Docker image is fully equiped for it. To add new genomes, you will have to align sequences to the reference genome, and construct ```h.vcf``` files. Follow [PHG](https://github.com/maize-genetics/phg_v2) guidelines 
 for an easy default (mmap_pro) alignment, or our in-terminal command indications in [barleygraph paper](https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRrTA6qsTDar992Z8SD7orh3o0ReV5Ng7c5lKsqFddk2g&s=10) for other architectures.
 
-If you want to build from scratch a new database, you may find interesting our [build PHG database script](graphs/build_PHG_database.sh). Just by modifing the [config file](graphs/PHG_database.example.config) and running the command like:
+If you want to build from scratch a new database, you may find interesting our [build PHG database script](https://github.com/eead-csic-compbio/barleygraph/blob/main/graphs/build_PHG_database.sh). Just by modifing the [config file](https://github.com/eead-csic-compbio/barleygraph/blob/main/graphs/PHG_database.example.config) and running the command like:
 ```bash
 ./build_PHG_database.sh --config <path/to/database.config>
 ```
@@ -293,7 +293,7 @@ Debuging the container may be though, its convenient to use a example toyset. Ru
 docker pull ghcr.io/eead-csic-compbio/barleygraph:Example_Ara-20260721
 ```
 You are getting a set of few arabidopsis genomes croped in some kb for chr1 & chr2 that are convinient to use.
-To build an image using the [docker file](docker/Dockerfile), you only need a local file Example_Ara.tgz, which can not be uploaded here, but that you can export from the pulled docker. You might try:
+To build an image using the [docker file](https://github.com/eead-csic-compbio/barleygraph/blob/main/docker/Dockerfile), you only need a local file Example_Ara.tgz, which can not be uploaded here, but that you can export from the pulled docker. You might try:
 ```bash
 docker run --rm   -v /scratch/PHG_barleymap/barleygraph/graphs/Ara_toyset/gmap_db/:/gmap_db/   -it barleygraph:example_ara   /bin/bash
 tar -czvf Example_Ara .
@@ -305,7 +305,7 @@ docker build \
   -t <image_name:tag> \
   -f docker/Dockerfile .
 ```
-To check how has this dataset being built: [Example_Ara config file](graphs/PHG_Example_Ara_database.config).
+To check how has this dataset being built: [Example_Ara config file](https://github.com/eead-csic-compbio/barleygraph/blob/main/graphs/PHG_Example_Ara_database.config).
 
 ## Troubleshooting
 
