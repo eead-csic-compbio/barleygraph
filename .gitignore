@@ -9,7 +9,6 @@ docker/scripts/hvcf2bed.py
 graphs/build_Med13_database.sh
 graphs/build_Pan20_database.sh
 graphs/Example_Ara.yaml
-graphs/Example_Ara_samplelist.tsv
 
 
 #Med13 stuff
