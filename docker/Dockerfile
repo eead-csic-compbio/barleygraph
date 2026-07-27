@@ -1,4 +1,4 @@
-FROM continuumio/miniconda3
+FROM anaconda/miniconda
 
 LABEL authors="Joan Sarria, Bruno Contreras Moreira"
 LABEL description="Container with align2graph, PHG and selected pangenome graph [Med13, Pan20, Example_Ara]"
