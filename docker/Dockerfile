@@ -24,7 +24,7 @@ RUN apt update && apt install --no-install-recommends -y \
 RUN conda install -c conda-forge openjdk=17 -y && \
     conda clean -afy
 
-# PHG v2.4 (last 2.4 release) - Download and extract
+# PHG v2.4.75.230 - Download and extract (adds 192MB)
 RUN wget -qO - https://api.github.com/repos/maize-genetics/phg_v2/releases/tags/2.4.75.230 \
     | awk -F': ' '/browser_download_url/ && /\.tar/ {gsub(/"/, "", $(NF)); system("wget " $(NF))}' \
     && tar -xvf *.tar \
@@ -32,7 +32,7 @@ RUN wget -qO - https://api.github.com/repos/maize-genetics/phg_v2/releases/tags/
 
 ENV PHGPATH /barleygraph/phg/bin
 
-# PHG and python deps
+# PHG and python deps (adds 2.5GB)
 RUN wget -qO environment.yml https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/environment.yml
 RUN conda env create -f environment.yml
 RUN conda install -n phgv2.4 -c conda-forge -y pandas matplotlib tqdm pyyaml
@@ -40,7 +40,7 @@ RUN echo "conda activate phgv2.4" >> ~/.bashrc
 ENV PATH /opt/conda/envs/phgv2.4/bin:$PATH
 ENV CONDA_DEFAULT_ENV phgv2.4
 
-# GMAP 2013-08-31 makes tiny indexes compared to 2015-12-31 onwards
+# GMAP 2013-08-31 makes tiny indexes compared to 2015-12-31 onwards (adds 121MB)
 ENV GVER 2013-08-31
 ENV GPATH /barleygraph/gmap-${GVER}/local
 RUN wget http://research-pub.gene.com/gmap/src/gmap-gsnap-${GVER}.tar.gz
