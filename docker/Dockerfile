@@ -59,7 +59,7 @@ ARG graph
 LABEL graph=$graph
 RUN echo $graph
 
-# graphs, config and bits - download from GitHub repository
+# graphs, config and bits - download from GitHub repository and from local build folder; graph.tgz is the largest part of container
 RUN if [ "${graph}" = "Pan20" ]; then \
         wget -q https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/graphs/Pan20_gmap-geno.yaml && \
         wget -q https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/graphs/Pan20_mmap-pro.yaml; \
