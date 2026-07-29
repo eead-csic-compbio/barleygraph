@@ -4,6 +4,13 @@ use warnings;
 use Getopt::Std;
 use File::Basename qw/ basename /; 
 
+# Maps reads in FASTQ file to indexed PHG pangenome graph in order to imputate and call
+# haplotypes across graph ranges, producing a PHG-imputed FASTA sequence which is ultimately
+# mapped back to the graph reference (MorexV3 in barley) to call variants a produce a gVCF file
+#
+# J Sarria, B Contreras-Moreira
+# Copyright [2026] Estacion Experimental de Aula Dei-CSIC
+
 my ($cmd,$root,$ref,%opts);
 my ($fqfile,$rfile,$kindexfile,$redo) = ('', '', '', 0);
 my ($threads,$chunksize,$minmatch,$outdir) = (4, 500, 101, '/tmp');
