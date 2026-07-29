@@ -12,10 +12,10 @@ use File::Basename qw/ basename /;
 # Copyright [2026] Estacion Experimental de Aula Dei-CSIC
 
 my ($cmd,$root,$ref,%opts);
-my ($fqfile,$rfile,$kindexfile,$redo) = ('', '', '', 0);
-my ($threads,$chunksize,$minmatch,$outdir) = (4, 500, 101, '/tmp');
+my ($fqfile,$hvcfdir,$rfile,$kindexfile,$redo) = ('', '', '', '', 0);
+my ($threads,$chunksize,$minmatch,$outdir) = (5, 500, 101, '/tmp');
 
-getopts('hRf:r:i:o:m:t:k:', \%opts);
+getopts('hRf:r:i:v:o:m:t:k:', \%opts);
 
 if(($opts{'h'})||(scalar(keys(%opts))==0)) {
   print "\nusage: $0 [options]\n\n";
@@ -23,6 +23,7 @@ if(($opts{'h'})||(scalar(keys(%opts))==0)) {
   print "-f input FASTQ file                                (example: -f sample.fastq.gz)\n";
   print "-r reference FASTA file                            (example: -r MorexV3.fna)\n";
   print "-i kmer index file                                 (example: -i Pan20_proali.fmd)\n";
+  print "-v graph hvcf-dir                                  (must contain h.vcf.gz files)\n";
   print "-o output folder                                   (optional, example: -o mysample, default -o /tmp)\n";
   print "-m min match length                                (optional, example -m 150, default -m $minmatch)\n";
   print "-t threads                                         (optional, example: -t 12, default -d $threads)\n";
@@ -46,10 +47,25 @@ if(!defined($opts{'r'})) {
   $ref = basename($rfile);
 }
 
-if(!defined($opts{'k'})) {
-  die "# ERROR: need kmer index file (-k)\n";
+if(!defined($opts{'i'})) {
+  die "# ERROR: need kmer index file (-i)\n";
 } else {
-  $kindexfile = $opts{'k'}
+  $kindexfile = $opts{'i'}
+}
+
+if(!defined($opts{'v'})) {
+  die "# ERROR: need valid hvcf-dir with h.vcf.gz files (-v)\n";
+} else {
+  $hvcfdir = $opts{'v'};
+
+  opendir(HVCF,$hvcfdir) || 
+    die "# ERROR: cannot list $hvcfdir\n";
+  my @files = grep{/\.h.vcf.gz/} readdir(HVCF);
+  closedir(HVCF);
+
+  if(scalar(@files) == 0) {
+    die "# ERROR: cannot find h.vcf.gz files in $hvcfdir\n";
+  }
 }
 
 if(defined($opts{'o'})) {
@@ -101,17 +117,21 @@ warn "## $0 -f $fqfile -r $rfile -i $kindexfile -o $outdir -m $minmatch -t $thre
 #VCF_DIR="$SCRIPT_DIR/vcf"
 #mkdir -p "$READMAPPINGS_DIR" "$IMPUTED_DIR" "$COMPOSITE_DIR" "$ALIGNMENTS_DIR" "$FLAGSTAT_DIR" "$LOG_DIR" "$VCF_DIR"
 
-# check phg is loaded (conda)
+# 0) check phg is loaded (conda)
 if(!`which phg`) {
   die "# ERROR: cannot find phg in \$PATH, perhaps you need to conda activate it?\n";  
 }
 
-
-# [1/6] map-reads
-my $mapfile = $root .'.'. $ref . '.readMapping.txt';
+# 1) map reads
+my $mapfile = "$outdir/$root" . '_1_readMapping.txt';
 if($redo == 1 || !-e $mapfile) {
-	#$cmd = run_cmd phg map-reads --index "$INDEX" --read-files "$fq" -o "$READMAPPINGS_DIR" --hvcf-dir "$HVCF_DIR" --threads "$THREADS" --min-mem-length "$MIN_MEM_LENGTH"	
-  #warn "# [1/6] Running phg map-reads..."
+  $cmd = "phg map-reads --index $kindexfile --read-files $fqfile -o $outdir --hvcf-dir $hvcfdir --threads $threads --min-mem-length $minmatch";
+  print($cmd);
+  #warn "# [1/6] Running phg map-reads ...";
+  #system($cmd);
+  #if($? != 0) {
+  #    die "# EXIT: failed ($cmd)\n";
+  #}
 } else {
 
 }	
