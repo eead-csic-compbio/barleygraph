@@ -131,6 +131,10 @@ if [ -f "${ROPEBWT_INDEX}" ]; then
     echo "PHG Index built successfully at:"
     echo "${ROPEBWT_INDEX}"
     echo "--------------------------------------------------------"
+# --- Cleanup ---
+    # Remove the intermediate pangenome.fa file
+    rm -f "${INDEX_OUTPUT_DIR}/pangenome.fa" "pangenome.fa"
+    
 else
     echo "ERROR: Index file not found after running the command. Build failed."
     exit 1
