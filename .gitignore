@@ -9,7 +9,8 @@ docker/scripts/hvcf2bed.py
 graphs/build_Med13_database.sh
 graphs/build_Pan20_database.sh
 graphs/Example_Ara.yaml
-
+NEW_DOCKER_USAGE.txt
+fastq2gvcf.pl
 
 #Med13 stuff
 graphs/Med13_samplelist.tsv
