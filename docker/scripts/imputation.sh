@@ -98,11 +98,7 @@ if [ -z "$ROPEBWT_INDEX" ] || [ ! -f "$ROPEBWT_INDEX" ]; then
 fi
 
 READS_ARG=$(IFS=,; echo "${READ_FILES[*]}")
-OUTPUT_BASE_DIR="${HVCF_DIR}/imputed_output"
-IMPUTED_VCF_DIR="${OUTPUT_BASE_DIR}/imputed_vcf_files"
-PATH_KEYFILE="${OUTPUT_BASE_DIR}/pathKeyFile.txt"
-
-mkdir -p "${IMPUTED_VCF_DIR}"
+PATH_KEYFILE="${HVCF_DIR}/pathKeyFile.txt"
 
 # --- 3. AGC Reference Extraction ---
 # Get the reference sample name dynamically from the archive
@@ -113,7 +109,7 @@ if [ -z "$REF_NAME" ]; then
     exit 1
 fi
 
-TEMP_FASTA="${OUTPUT_BASE_DIR}/${REF_NAME}.fa"
+TEMP_FASTA="${HVCF_DIR}/${REF_NAME}.fa"
 
 echo "Starting PHG Imputation"
 echo "hVCF Dir:     ${HVCF_DIR}"
@@ -122,7 +118,7 @@ echo "AGC Archive:  ${AGC_FILE}"
 echo "Reference:    ${REF_NAME} (Extracting dynamically)"
 echo "Reads:        ${READS_ARG}"
 echo "Threads:      ${THREADS}"
-echo "Output Dir:   ${IMPUTED_VCF_DIR}"
+echo "Output Dir:   ${HVCF_DIR}"
 echo "--------------------------------------------------------"
 
 echo "Extracting ${REF_NAME} to temporary FASTA..."
@@ -142,7 +138,7 @@ echo "Running phg map-reads..."
 phg map-reads \
     --index "${ROPEBWT_INDEX}" \
     --read-files "${READS_ARG}" \
-    -o "${OUTPUT_BASE_DIR}" \
+    -o "${HVCF_DIR}" \
     --threads "${THREADS}" \
     --hvcf-dir "${HVCF_DIR}" \
     --conda-env-prefix "${CONDA_ENV}"
@@ -160,7 +156,7 @@ phg find-paths \
     --kmer-index "${ROPEBWT_INDEX}" \
     --threads "${THREADS}" \
     --reference-genome "${TEMP_FASTA}" \
-    --output-dir "${IMPUTED_VCF_DIR}"
+    --output-dir "${HVCF_DIR}"
 
 # --- 5. Cleanup ---
 echo "Cleaning up temporary files..."
@@ -168,4 +164,4 @@ rm -f "${PATH_KEYFILE}" "${TEMP_FASTA}"
 
 echo "--------------------------------------------------------"
 echo "PHG Imputation Completed successfully."
-echo "Imputed VCF files are located in: ${IMPUTED_VCF_DIR}"
+echo "Imputed VCF files are located in: ${HVCF_DIR}"
