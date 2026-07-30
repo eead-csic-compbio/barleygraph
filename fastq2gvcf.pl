@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 use Getopt::Std;
-use File::Basename qw/ basename /; 
+use File::Basename qw/ fileparse /; 
 
 # Maps reads in FASTQ file to indexed PHG pangenome graph in order to imputate and call
 # haplotypes across graph ranges, producing a PHG-imputed FASTA sequence which is ultimately
@@ -11,11 +11,11 @@ use File::Basename qw/ basename /;
 # J Sarria, B Contreras-Moreira
 # Copyright [2026] Estacion Experimental de Aula Dei-CSIC
 
-my ($cmd,$root,$ref,%opts);
+my ($cmd,$root,%opts);
 my ($fqfile,$hvcfdir,$rfile,$kindexfile,$redo) = ('', '', '', '', 0);
-my ($threads,$chunksize,$minmatch,$outdir) = (5, 500, 101, '/tmp');
+my ($threads,$chunksize,$minmatch,$outdir,$condaenvpath) = (5, 500, 101, '/tmp', '');
 
-getopts('hRf:r:i:v:o:m:t:k:', \%opts);
+getopts('hRf:r:i:v:o:m:t:k:c:', \%opts);
 
 if(($opts{'h'})||(scalar(keys(%opts))==0)) {
   print "\nusage: $0 [options]\n\n";
@@ -25,7 +25,8 @@ if(($opts{'h'})||(scalar(keys(%opts))==0)) {
   print "-i kmer index file                                 (example: -i Pan20_proali.fmd)\n";
   print "-v graph hvcf-dir                                  (must contain h.vcf.gz files)\n";
   print "-o output folder                                   (optional, example: -o mysample, default -o /tmp)\n";
-  print "-m min match length                                (optional, example -m 150, default -m $minmatch)\n";
+  print "-c conda phg path                                  (optional, example: -c /home/user/miniconda3/envs/phgv2.4)\n";
+  print "-m min match length                                (optional, example: -m 150, default -m $minmatch)\n";
   print "-t threads                                         (optional, example: -t 12, default -d $threads)\n";
   print "-k chunk size                                      (optional, example: -k 1000, default -k $chunksize\n";
   print "-R redo all steps even if results are in place     (optional, by default previous results are re-used)\n";
@@ -37,20 +38,25 @@ if(!defined($opts{'f'})) {
   die "# ERROR: need input FASTQ file (-f)\n";
 } else {
   $fqfile = $opts{'f'};
-  $root = basename($fqfile);
+  $root = fileparse($fqfile, qr/\..*/);
 }
 
 if(!defined($opts{'r'})) {
   die "# ERROR: need reference FASTA file (-r)\n";
 } else {
   $rfile = $opts{'r'};
-  $ref = basename($rfile);
 }
 
 if(!defined($opts{'i'})) {
   die "# ERROR: need kmer index file (-i)\n";
 } else {
-  $kindexfile = $opts{'i'}
+  $kindexfile = $opts{'i'};
+
+  if(!-e $kindexfile.'.ssa') {
+    die "# ERROR: need also kmer index file $kindexfile\.ssa\n";
+  } elsif(!-e $kindexfile.'.len.gz') {
+    die "# ERROR: need also kmer index file $kindexfile\.len.gz\n";
+  }  
 }
 
 if(!defined($opts{'v'})) {
@@ -80,6 +86,10 @@ if(defined($opts{'o'})) {
   }
 }
 
+if(defined($opts{'c'})) {
+  $condaenvpath = $opts{'c'};
+}
+
 if(defined($opts{'m'}) && $opts{'m'} >= 0) {
   $minmatch = $opts{'m'}
 }
@@ -96,7 +106,7 @@ if(defined($opts{'R'})) {
   $redo = 1
 }
 
-warn "## $0 -f $fqfile -r $rfile -i $kindexfile -o $outdir -m $minmatch -t $threads -k $chunksize -R $redo\n\n";
+warn "## $0 -f $fqfile -r $rfile -i $kindexfile -o $outdir -c $condaenvpath -m $minmatch -t $threads -k $chunksize -R $redo\n\n";
 
 #INDEX="$PAN20_ROOT/output/vcf_files/proali/Pan20_proali.fmd"
 #HVCF_DIR="$PAN20_ROOT/output/vcf_files/proali"
@@ -125,14 +135,19 @@ if(!`which phg`) {
 # 1) map reads
 my $mapfile = "$outdir/$root" . '_1_readMapping.txt';
 if($redo == 1 || !-e $mapfile) {
-  $cmd = "phg map-reads --index $kindexfile --read-files $fqfile -o $outdir --hvcf-dir $hvcfdir --threads $threads --min-mem-length $minmatch";
-  print($cmd);
-  #warn "# [1/6] Running phg map-reads ...";
-  #system($cmd);
-  #if($? != 0) {
-  #    die "# EXIT: failed ($cmd)\n";
-  #}
-} else {
+  $cmd = "phg map-reads --index $kindexfile --read-files $fqfile -o $outdir --hvcf-dir $hvcfdir " .
+    "--threads $threads --min-mem-length $minmatch";
+  if($condaenvpath ne '') { 
+    $cmd .= " --conda-env-prefix $condaenvpath";
+  }  
 
+  warn "# 1 Running phg map-reads ...";
+  system($cmd);
+  if($? != 0) {
+      die "# EXIT: failed ($cmd)\n";
+  }
+} else {
+  print "# re-using $mapfile\n";
 }	
+
 
