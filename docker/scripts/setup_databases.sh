@@ -118,8 +118,11 @@ fi
 # ------------------------------------------------------------------------------
 # Download and Extract
 # ------------------------------------------------------------------------------
+# Create a hidden temporary directory for safe extraction (prevents naming collisions)
+EXTRACT_DIR="$PARENT_DIR/.tmp_${DATASET_NAME}"
+
 # Download archive if it doesn't exist in the root folder
-if [ ! -f "$TAR_FILE" ] && [ ! -d "$EXTRACT_DIR" ]; then
+if [ ! -f "$TAR_FILE" ]; then
   echo "Downloading ${DATASET_NAME}.tgz from $KIT_URL..."
   
   if ! wget -c -q --show-progress -O "$TAR_FILE" "$KIT_URL"; then
@@ -130,23 +133,24 @@ fi
 
 # Extract and merge files
 if [ -f "$TAR_FILE" ]; then
-  echo "Extracting $TAR_FILE into $PARENT_DIR/..."
+  echo "Extracting $TAR_FILE..."
   
-  if ! tar -xzf "$TAR_FILE" -C "$PARENT_DIR"; then
+  mkdir -p "$EXTRACT_DIR"
+  
+  # Extract directly into the temporary folder
+  if ! tar -xzf "$TAR_FILE" -C "$EXTRACT_DIR"; then
     echo "ERROR: Failed to extract ${DATASET_NAME}.tgz."
     exit 1
   fi
 
   # Merge contents into the parent folder (skipping existing/duplicate files)
-  if [ -d "$EXTRACT_DIR" ]; then
-      echo "Merging contents into shared $PANGENOME_NAME folder (skipping duplicate files)..."
-      
-      # mv -n moves files without overwriting. Existing duplicates stay in EXTRACT_DIR.
-      mv -n "$EXTRACT_DIR"/* "$PARENT_DIR"/ 2>/dev/null || true
-      
-      # Remove leftover folder containing skipped duplicate files
-      rm -rf "$EXTRACT_DIR"
-  fi
+  echo "Merging contents into shared $PANGENOME_NAME folder (skipping duplicate files)..."
+  
+  # cp -rn recursively merges folders and copies files without overwriting.
+  cp -rn "$EXTRACT_DIR"/* "$PARENT_DIR"/ 2>/dev/null || true
+  
+  # Remove the temporary folder
+  rm -rf "$EXTRACT_DIR"
 
   # Remove tarball after setup
   echo "Removing $TAR_FILE..."
