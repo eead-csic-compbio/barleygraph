@@ -11,21 +11,18 @@ use File::Basename qw/ fileparse /;
 # J Sarria, B Contreras-Moreira
 # Copyright [2026] Estacion Experimental de Aula Dei-CSIC
 
-my ($cmd,$root,%opts);
-my ($fqfile,$hvcfdir,$rfile,$kindexfile,$redo) = ('', '', '', '', 0);
-my ($threads,$chunksize,$minmatch,$outdir,$condaenvpath) = (5, 500, 101, '/tmp', '');
+my ($cmd,$root,$key,$val,%opts,%config);
+my ($fqfile,$redo) = ('', 0);
+my ($threads,$chunksize,$minmatch,$outdir) = (5, 500, 101, '/tmp');
 
-getopts('hRf:r:i:v:o:m:t:k:c:', \%opts);
+getopts('hRf:c:o:m:t:k:', \%opts);
 
 if(($opts{'h'})||(scalar(keys(%opts))==0)) {
   print "\nusage: $0 [options]\n\n";
   print "-h this message\n";
   print "-f input FASTQ file                                (example: -f sample.fastq.gz)\n";
-  print "-r reference FASTA file                            (example: -r MorexV3.fna)\n";
-  print "-i kmer index file                                 (example: -i Pan20_proali.fmd)\n";
-  print "-v graph hvcf-dir                                  (must contain h.vcf.gz files)\n";
-  print "-o output folder                                   (optional, example: -o mysample, default -o /tmp)\n";
-  print "-c conda phg path                                  (optional, example: -c /home/user/miniconda3/envs/phgv2.4)\n";
+  print "-c graph config file                               (example: -c /path/to/graph/config.impute.yaml)\n";
+  print "-o output folder                                   (optional, example: -o mysample, default -o $outdir)\n";
   print "-m min match length                                (optional, example: -m 150, default -m $minmatch)\n";
   print "-t threads                                         (optional, example: -t 12, default -d $threads)\n";
   print "-k chunk size                                      (optional, example: -k 1000, default -k $chunksize\n";
@@ -41,38 +38,40 @@ if(!defined($opts{'f'})) {
   $root = fileparse($fqfile, qr/\..*/);
 }
 
-if(!defined($opts{'r'})) {
-  die "# ERROR: need reference FASTA file (-r)\n";
+if(!defined($opts{'c'})) {
+  die "# ERROR: need graph config file (-c)\n";
 } else {
-  $rfile = $opts{'r'};
-}
+  open(CONFIG,"<",$opts{'c'}) ||
+    die "# ERROR: cannot read graph config file (-c)\n";
+  while(<CONFIG>) {
+    next if(/^#/);
+    if(/([^:]+):\s+(\S+)/) {
+      ($key,$val) = ($1, $2);
+      if(!-e $val) {
+        die "# ERROR: bad value for '$key' in $opts{'c'}\n";
+      } elsif($key eq 'kmer-index-file') {
+        if(!-e $val.'.ssa') {
+        die "# ERROR: need also kmer index file $val\.ssa, check $opts{'c'} ($key)\n";
+        } elsif(!-e $val.'.len.gz') {
+        die "# ERROR: need also kmer index file $val\.len.gz, check $opts{'c'} ($key)\n";
+        } 
+      } elsif($key eq 'hvcf-dir') {
+        opendir(HVCF,$val) ||
+          die "# ERROR: cannot list $val\n";
+        my @files = grep{/\.h.vcf.gz/} readdir(HVCF);
+        closedir(HVCF);
 
-if(!defined($opts{'i'})) {
-  die "# ERROR: need kmer index file (-i)\n";
-} else {
-  $kindexfile = $opts{'i'};
+        if(scalar(@files) == 0) {
+          die "# ERROR: cannot find h.vcf.gz files in $val\n";
+        }
 
-  if(!-e $kindexfile.'.ssa') {
-    die "# ERROR: need also kmer index file $kindexfile\.ssa\n";
-  } elsif(!-e $kindexfile.'.len.gz') {
-    die "# ERROR: need also kmer index file $kindexfile\.len.gz\n";
-  }  
-}
-
-if(!defined($opts{'v'})) {
-  die "# ERROR: need valid hvcf-dir with h.vcf.gz files (-v)\n";
-} else {
-  $hvcfdir = $opts{'v'};
-
-  opendir(HVCF,$hvcfdir) || 
-    die "# ERROR: cannot list $hvcfdir\n";
-  my @files = grep{/\.h.vcf.gz/} readdir(HVCF);
-  closedir(HVCF);
-
-  if(scalar(@files) == 0) {
-    die "# ERROR: cannot find h.vcf.gz files in $hvcfdir\n";
-  }
-}
+      } else {
+        $config{$key} = $val
+      }	
+    }
+  } 
+  close(CONFIG);
+} 
 
 if(defined($opts{'o'})) {
   $outdir = $opts{'o'};
@@ -84,10 +83,6 @@ if(defined($opts{'o'})) {
       die "# ERROR: cannot create $outdir\n";
     }	  
   }
-}
-
-if(defined($opts{'c'})) {
-  $condaenvpath = $opts{'c'};
 }
 
 if(defined($opts{'m'}) && $opts{'m'} >= 0) {
@@ -106,26 +101,7 @@ if(defined($opts{'R'})) {
   $redo = 1
 }
 
-warn "## $0 -f $fqfile -r $rfile -i $kindexfile -o $outdir -c $condaenvpath -m $minmatch -t $threads -k $chunksize -R $redo\n\n";
-
-#INDEX="$PAN20_ROOT/output/vcf_files/proali/Pan20_proali.fmd"
-#HVCF_DIR="$PAN20_ROOT/output/vcf_files/proali"
-#REFERENCE_GENOME="$PAN20_ROOT/data/MorexV3.fa"
-#DB_PATH="$PAN20_ROOT/vcf_dbs"
-#RANGE_BEDFILE="$PAN20_ROOT/output/ref_ranges.bed"
-#MOREX_REF="/agave/compbio/references/barley/Barley_Morex_V3/GCA_904849725.1_MorexV3_pseudomolecules.chrnames.fna"
-#ASSEMBLY_DIR="/agave/compbio/references/barley/pangenome56/Assemblies"
-#MIN_MEM_LENGTH=101
-
-#DATA_DIR="$SCRIPT_DIR/data"
-#READMAPPINGS_DIR="$SCRIPT_DIR/readmappings"
-#IMPUTED_DIR="$SCRIPT_DIR/imputed_hvcf"
-#COMPOSITE_DIR="$SCRIPT_DIR/composite_fastas"
-#ALIGNMENTS_DIR="$SCRIPT_DIR/alignments"
-#FLAGSTAT_DIR="$SCRIPT_DIR/flagstat"
-#LOG_DIR="$SCRIPT_DIR/logs"
-#VCF_DIR="$SCRIPT_DIR/vcf"
-#mkdir -p "$READMAPPINGS_DIR" "$IMPUTED_DIR" "$COMPOSITE_DIR" "$ALIGNMENTS_DIR" "$FLAGSTAT_DIR" "$LOG_DIR" "$VCF_DIR"
+warn "## $0 -f $fqfile -c $opts{'c'} -o $outdir -m $minmatch -t $threads -k $chunksize -R $redo\n\n";
 
 # 0) check phg is loaded (conda)
 if(!`which phg`) {
@@ -135,19 +111,55 @@ if(!`which phg`) {
 # 1) map reads
 my $mapfile = "$outdir/$root" . '_1_readMapping.txt';
 if($redo == 1 || !-e $mapfile) {
-  $cmd = "phg map-reads --index $kindexfile --read-files $fqfile -o $outdir --hvcf-dir $hvcfdir " .
-    "--threads $threads --min-mem-length $minmatch";
-  if($condaenvpath ne '') { 
-    $cmd .= " --conda-env-prefix $condaenvpath";
-  }  
+  $cmd = "phg map-reads --index $config{'kmer-index-file'} --read-files $fqfile -o $outdir --hvcf-dir $config{'hvcf-dir'} " .
+    "--threads $threads --min-mem-length $minmatch --conda-env-prefix $config{'conda-env-prefix'}";
+  run_cmd("# 1 Running phg map-reads ...", $cmd);
 
-  warn "# 1 Running phg map-reads ...";
+} else {
+  print "# 1 re-using $mapfile\n";
+}	
+
+# 2) find paths
+my $hvcf_file = "$outdir/$root" . '_1.h.vcf';
+if($redo == 1 || !-e $hvcf_file) {
+  $cmd = "phg find-paths --read-files $mapfile --output-dir $outdir --hvcf-dir $config{'hvcf-dir'} --path-type haploid " .
+    "--threads $threads --reference-genome $config{'reference-fasta'}";
+  run_cmd("# 2 Running phg find-paths ...", $cmd);
+
+} else {
+  print "# 2 re-using $hvcf_file\n";
+}
+
+# 3) create fasta from hvcf
+my $composite_file = "$outdir/$root" . '_1_composite.fa';
+if($redo == 1 || !-e $composite_file) {
+  $cmd = "phg create-fasta-from-hvcf --hvcf-file $hvcf_file -o $outdir --db-path $config{'db-path'} " .
+    "--range-bedfile $config{'range-bed'} --conda-env-prefix $config{'conda-env-prefix'} --fasta-type composite";
+  run_cmd("# 3 Running phg create-fasta-from-hvcf ...", $cmd);
+
+} else {
+  print "# 3 re-using $composite_file\n";
+}
+
+
+
+
+#        if [ ! -f "$composite_fa" ]; then
+#            echo "[3/6] Running phg create-fasta-from-hvcf..."
+#            run_cmd phg create-fasta-from-hvcf --db-path "$DB_PATH" -o "$COMPOSITE_DIR" --fasta-type composite --hvcf-file "$hvcf_file" --range-bedfile "$RANGE_BEDFILE"
+#            echo "Indexing Composite FASTA..."
+#            samtools faidx "$composite_fa"
+#        fi
+
+
+sub run_cmd {
+  my ($message, $cmd) = @_;
+
+  warn $message;
   system($cmd);
   if($? != 0) {
-      die "# EXIT: failed ($cmd)\n";
+      die "# EXIT: command failed ($cmd)\n";
   }
-} else {
-  print "# re-using $mapfile\n";
-}	
+}
 
 
