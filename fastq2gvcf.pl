@@ -119,7 +119,7 @@ if(defined($opts{'R'})) {
   $redo = 1
 }
 
-$output_file = "$outdir/$root" . ".composite.$chunksize.vcf.gz";
+$output_file = "$outdir/$root" . ".$chunksize.vcf.gz";
 
 warn "## $0 -f $fqfile -c $opts{'c'} -o $outdir -m $minmatch -t $threads -k $chunksize -B $bwaEXE -A $allsites -R $redo\n\n";
 
