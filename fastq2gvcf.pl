@@ -238,7 +238,9 @@ if($redo == 1 || !-e $output_file) {
   print "## output $output_file (re-used)\n";
 }
 
-#unlink(@temp);
+# clean only if successful
+unlink(@temp);
+
 exit(0);
 
 
