@@ -14,8 +14,13 @@ use File::Basename qw/ fileparse /;
 my ($cmd,$root,$key,$val,%opts,%config);
 my ($fqfile,$redo) = ('', 0);
 my ($threads,$chunksize,$minmatch,$outdir) = (5, 500, 101, '/tmp');
+my $samtoolsEXE = 'samtools';
+my $minibwaEXE  = 'minibwa';
+my $bedtoolsEXE = 'bedtools';
+my $bcftoolsEXE = 'bcftools';
+my $output_file = "$outdir/$root" . ".composite.$chunksize.vcf.gz";
 
-getopts('hRf:c:o:m:t:k:', \%opts);
+getopts('hRB:f:c:o:m:t:k:', \%opts);
 
 if(($opts{'h'})||(scalar(keys(%opts))==0)) {
   print "\nusage: $0 [options]\n\n";
@@ -26,6 +31,7 @@ if(($opts{'h'})||(scalar(keys(%opts))==0)) {
   print "-m min match length                                (optional, example: -m 150, default -m $minmatch)\n";
   print "-t threads                                         (optional, example: -t 12, default -d $threads)\n";
   print "-k chunk size                                      (optional, example: -k 1000, default -k $chunksize\n";
+  print "-B path to minibwa binary                          (optional, example: -B /path/to/minibwa)\n";
   print "-R redo all steps even if results are in place     (optional, by default previous results are re-used)\n";
   #print "\nPrimary citation: https://www.biorxiv.org/content/10.1101/2025.07.17.665301v1\n";
   exit(0);
@@ -96,13 +102,23 @@ if(defined($opts{'k'}) && $opts{'k'} >= 0) {
   $chunksize = $opts{'k'}
 }
 
+if(defined($opts{'B'})) {
+  $minibwaEXE = $opts{'B'}
+}
+
 if(defined($opts{'R'})) {
   $redo = 1
 }
 
-warn "## $0 -f $fqfile -c $opts{'c'} -o $outdir -m $minmatch -t $threads -k $chunksize -R $redo\n\n";
+warn "## $0 -f $fqfile -c $opts{'c'} -o $outdir -m $minmatch -t $threads -k $chunksize -B $minibwaEXE -R $redo\n\n";
 
-# 0) check phg is loaded (conda)
+# 0.1) check output
+if($redo == 0 && -e $output_file) {
+  print "## output: $output_file\n";
+  exit(0);
+}
+
+# 0.2) check phg is loaded (conda)
 if(!`which phg`) {
   die "# ERROR: cannot find phg in \$PATH, perhaps you need to conda activate it?\n";  
 }
@@ -112,7 +128,7 @@ my $mapfile = "$outdir/$root" . '_1_readMapping.txt';
 if($redo == 1 || !-e $mapfile) {
   $cmd = "phg map-reads --index $config{'kmer-index-file'} --read-files $fqfile -o $outdir --hvcf-dir $config{'hvcf-dir'} " .
     "--threads $threads --min-mem-length $minmatch "; #--conda-env-prefix $config{'conda-env-prefix'}";
-  run_cmd("# 1 Running phg map-reads ...", $cmd);
+  run_cmd($cmd, "# 1 Running phg map-reads ...");
 
 } else {
   print "# 1 re-using $mapfile\n";
@@ -123,7 +139,7 @@ my $hvcf_file = "$outdir/$root" . '_1.h.vcf';
 if($redo == 1 || !-e $hvcf_file) {
   $cmd = "phg find-paths --read-files $mapfile --output-dir $outdir --hvcf-dir $config{'hvcf-dir'} --path-type haploid " .
     "--threads $threads --reference-genome $config{'reference-fasta'}";
-  run_cmd("# 2 Running phg find-paths ...", $cmd);
+  run_cmd($cmd, "# 2 Running phg find-paths ...");
 
 } else {
   print "# 2 re-using $hvcf_file\n";
@@ -134,7 +150,7 @@ my $composite_file = "$outdir/$root" . '_1_composite.fa';
 if($redo == 1 || !-e $composite_file) {
   $cmd = "phg create-fasta-from-hvcf --hvcf-file $hvcf_file -o $outdir --db-path $config{'db-path'} " .
     "--range-bedfile $config{'range-bed'} --fasta-type composite"; #--conda-env-prefix $config{'conda-env-prefix'}";
-  run_cmd("# 3 Running phg create-fasta-from-hvcf ...", $cmd);
+  run_cmd($cmd, "# 3 Running phg create-fasta-from-hvcf ...");
   
 } else {
   print "# 3 re-using $composite_file\n";
@@ -143,19 +159,66 @@ if($redo == 1 || !-e $composite_file) {
 # 4) index fasta
 my $composite_index_file = $composite_file . '.fai';
 if($redo == 1 || !-e $composite_index_file) {
-  $cmd = "samtools faidx $composite_file";
-  run_cmd("# 4 Indexing composite fasta ...", $cmd);
+  $cmd = "$samtoolsEXE faidx $composite_file";
+  run_cmd($cmd, "# 4 Indexing composite fasta ...");
 
 } else {
   print "# 4 re-using $composite_index_file\n";
 }
 
+# 5) chunk composite sequence
+my $composite_chunks_bam = "$outdir/$root" . "_1_composite.$chunksize.bam";
+if($redo == 1 || !-e $composite_chunks_bam) {
+
+  my $comp_genome_bed  = "$outdir/$root" . '_1_comp_genome.bed';
+  my $comp_chunks_bed  = "$outdir/$root" . '_1_comp_chunks.bed';
+  my $comp_chunks_file = "$outdir/$root" . '_1_comp_chunks.fa';
+  my $ref_index_file   = $config{'reference-fasta'} . '.mbw';
+  my @temp = ($comp_genome_bed, $comp_chunks_bed, $comp_chunks_file, $ref_index_file);
+
+  $cmd = "perl -lane 'print \"\$F[0]\t0\t\$F[1]\"' $composite_index_file > $comp_genome_bed";
+  run_cmd($cmd) if(!-e $comp_genome_bed);
+  
+  $cmd = "$bedtoolsEXE makewindows -b $comp_genome_bed -w $chunksize > $comp_chunks_bed";
+  run_cmd($cmd) if(!-e $comp_chunks_bed);
+  
+  $cmd = "$bedtoolsEXE getfasta -fi $composite_file -bed $comp_chunks_bed -fo $comp_chunks_file";
+  run_cmd($cmd, "# 5.1 Chunking composite fasta ...") if(!-e $comp_chunks_file);
+
+  $cmd = "$minibwaEXE index -t $threads $config{'reference-fasta'}";
+  run_cmd($cmd, "# 5.2 Indexing reference fasta ...") if(!-e $ref_index_file);
+
+  $cmd = "$minibwaEXE map -t $threads $config{'reference-fasta'} $comp_chunks_file | " .
+    "$samtoolsEXE sort -@ $threads -o $composite_chunks_bam && $samtoolsEXE index -c -@ $threads $composite_chunks_bam";
+  run_cmd($cmd, "# 5.3 Mapping composite fasta ...");  
+  
+  #unlink(@temp);
+  
+} else {
+  print "# 5 re-using $composite_chunks_bam\n";
+}
+
+# 6) variant call, produces final gVCF output file
+if($redo == 1 || !-e $output_file) {
+
+  $cmd = "$bcftoolsEXE mpileup -Ou -f $config{'reference-fasta'} $composite_chunks_bam | " .
+    "$bcftoolsEXE call -m -Oz -o $output_file";
+  run_cmd($cmd, "# 6 Variant calling ...");
+
+} else {
+  print "# 6 re-using $output_file\n";
+}
+
+print "## output: $output_file\n";
+exit(0);
+
+
 
 
 sub run_cmd {
-  my ($message, $cmd) = @_;
+  my ($cmd, $message) = @_;
 
-  warn $message;
+  print $message if($message);
   system($cmd);
   if($? != 0) {
       die "# EXIT: command failed ($cmd)\n";
