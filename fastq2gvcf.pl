@@ -6,20 +6,24 @@ use File::Basename qw/ fileparse /;
 
 # Maps reads in FASTQ file to indexed PHG pangenome graph in order to imputate and call
 # haplotypes across graph ranges, producing a PHG-imputed FASTA sequence which is ultimately
-# mapped back to the graph reference (MorexV3 in barley) to call variants a produce a gVCF file
+# mapped back to the graph reference (MorexV3 in barley) to call variants a produce a gVCF file.
+#
+# NOTE: heterozygous sites are explicitely excluded from output VCF as might be artificially 
+# introduced by chunks aligning to same reference regions
+
 #
 # J Sarria, B Contreras-Moreira
 # Copyright [2026] Estacion Experimental de Aula Dei-CSIC
 
 my ($cmd,$root,$key,$val,%opts,%config,@temp);
-my ($fqfile,$output_file,$redo) = ('', '', 0);
+my ($fqfile,$output_file,$redo,$allsites) = ('', '', 0, 0);
 my ($threads,$chunksize,$minmatch,$outdir) = (5, 500, 101, '/tmp');
 my $samtoolsEXE = 'samtools';
 my $bwaEXE      = 'minibwa';
 my $bedtoolsEXE = 'bedtools';
 my $bcftoolsEXE = 'bcftools';
 
-getopts('hRB:f:c:o:m:t:k:', \%opts);
+getopts('hARB:f:c:o:m:t:k:', \%opts);
 
 if(($opts{'h'})||(scalar(keys(%opts))==0)) {
   print "\nusage: $0 [options]\n\n";
@@ -31,8 +35,9 @@ if(($opts{'h'})||(scalar(keys(%opts))==0)) {
   print "-t threads                                         (optional, example: -t 12, default -d $threads)\n";
   print "-k chunk size                                      (optional, example: -k 1000, default -k $chunksize\n";
   print "-B path to [mini]bwa binary                        (optional, example: -B /path/to/[mini]bwa)\n";
+  print "-A all sites in output VCF, not just variants      (optional, by default only variants are considered)\n";
   print "-R redo all steps even if results are in place     (optional, by default previous results are re-used)\n";
-  #print "\nPrimary citation: https://www.biorxiv.org/content/10.1101/2025.07.17.665301v1\n";
+  #print "\nPrimary citation:\n";
   exit(0);
 }
 
@@ -105,13 +110,17 @@ if(defined($opts{'B'})) {
   $bwaEXE = $opts{'B'}
 }
 
+if(defined($opts{'A'})) {
+  $allsites = 1
+}
+
 if(defined($opts{'R'})) {
   $redo = 1
 }
 
 $output_file = "$outdir/$root" . ".composite.$chunksize.vcf.gz";
 
-warn "## $0 -f $fqfile -c $opts{'c'} -o $outdir -m $minmatch -t $threads -k $chunksize -B $bwaEXE -R $redo\n\n";
+warn "## $0 -f $fqfile -c $opts{'c'} -o $outdir -m $minmatch -t $threads -k $chunksize -B $bwaEXE -A $allsites -R $redo\n\n";
 
 # 0.1) check output
 if($redo == 0 && -e $output_file) {
@@ -212,10 +221,15 @@ if($redo == 1 || !-e $composite_chunks_bam) {
   print "# 5 re-using $composite_chunks_bam\n";
 }
 
-# 6) variant call, produces final gVCF output file
+# 6) variant call, produces final gVCF output file with het sites filtered out
 if($redo == 1 || !-e $output_file) {
-  $cmd = "$bcftoolsEXE mpileup -Ou -f $config{'reference-fasta'} $composite_chunks_bam | " .
-    "$bcftoolsEXE call -m -Oz -o $output_file";
+  $cmd = "$bcftoolsEXE mpileup -Ou -f $config{'reference-fasta'} $composite_chunks_bam | ";
+  if($allsites == 1) {
+    "$bcftoolsEXE call -m -Oz | bcftools view -g ^het -o $output_file";
+  } else {
+    "$bcftoolsEXE call -v -Oz | bcftools view -g ^het -o $output_file";
+  }
+
   run_cmd($cmd, "# 6 Variant calling ...");
   print "## output: $output_file\n";
 
@@ -223,7 +237,7 @@ if($redo == 1 || !-e $output_file) {
   print "## output $output_file (re-used)\n";
 }
 
-unlink(@temp);
+#unlink(@temp);
 exit(0);
 
 
