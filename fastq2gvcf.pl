@@ -46,7 +46,7 @@ if(!defined($opts{'c'})) {
   while(<CONFIG>) {
     next if(/^#/);
     if(/([^:]+):\s+(\S+)/) {
-      ($key,$val) = ($1, $2);
+      ($key,$val) = ($1, $2); 
       if(!-e $val) {
         die "# ERROR: bad value for '$key' in $opts{'c'}\n";
       } elsif($key eq 'kmer-index-file') {
@@ -64,10 +64,9 @@ if(!defined($opts{'c'})) {
         if(scalar(@files) == 0) {
           die "# ERROR: cannot find h.vcf.gz files in $val\n";
         }
+      } 
 
-      } else {
-        $config{$key} = $val
-      }	
+      $config{$key} = $val	
     }
   } 
   close(CONFIG);
@@ -112,7 +111,7 @@ if(!`which phg`) {
 my $mapfile = "$outdir/$root" . '_1_readMapping.txt';
 if($redo == 1 || !-e $mapfile) {
   $cmd = "phg map-reads --index $config{'kmer-index-file'} --read-files $fqfile -o $outdir --hvcf-dir $config{'hvcf-dir'} " .
-    "--threads $threads --min-mem-length $minmatch --conda-env-prefix $config{'conda-env-prefix'}";
+    "--threads $threads --min-mem-length $minmatch "; #--conda-env-prefix $config{'conda-env-prefix'}";
   run_cmd("# 1 Running phg map-reads ...", $cmd);
 
 } else {
@@ -134,22 +133,23 @@ if($redo == 1 || !-e $hvcf_file) {
 my $composite_file = "$outdir/$root" . '_1_composite.fa';
 if($redo == 1 || !-e $composite_file) {
   $cmd = "phg create-fasta-from-hvcf --hvcf-file $hvcf_file -o $outdir --db-path $config{'db-path'} " .
-    "--range-bedfile $config{'range-bed'} --conda-env-prefix $config{'conda-env-prefix'} --fasta-type composite";
+    "--range-bedfile $config{'range-bed'} --fasta-type composite"; #--conda-env-prefix $config{'conda-env-prefix'}";
   run_cmd("# 3 Running phg create-fasta-from-hvcf ...", $cmd);
-
+  
 } else {
   print "# 3 re-using $composite_file\n";
 }
 
+# 4) index fasta
+my $composite_index_file = $composite_file . '.fai';
+if($redo == 1 || !-e $composite_index_file) {
+  $cmd = "samtools faidx $composite_file";
+  run_cmd("# 4 Indexing composite fasta ...", $cmd);
 
+} else {
+  print "# 4 re-using $composite_index_file\n";
+}
 
-
-#        if [ ! -f "$composite_fa" ]; then
-#            echo "[3/6] Running phg create-fasta-from-hvcf..."
-#            run_cmd phg create-fasta-from-hvcf --db-path "$DB_PATH" -o "$COMPOSITE_DIR" --fasta-type composite --hvcf-file "$hvcf_file" --range-bedfile "$RANGE_BEDFILE"
-#            echo "Indexing Composite FASTA..."
-#            samtools faidx "$composite_fa"
-#        fi
 
 
 sub run_cmd {
