@@ -1,15 +1,18 @@
 FROM anaconda/miniconda
 
 LABEL authors="Joan Sarria, Bruno Contreras Moreira"
-LABEL description="Container with align2graph, PHG and selected pangenome graph [Med13, Pan20, Example_Ara]"
+LABEL description="Container with align2graph and selected tools"
 LABEL license="GPLv3"
 LABEL maintainers="compbio@eead.csic.es"
-LABEL org.opencontainers.image.source https://github.com/OWNER/REPO
+LABEL org.opencontainers.image.source https://github.com/eead-csic-compbio/barleygraph
 
 USER root
 
-# bound in runtime to writable local dir with 'index'
-RUN mkdir -m 0777 /gmap_db
+# bound in runtime to writable local dir with 'gmap_db'
+VOLUME /gmap_db
+
+# Output folder, which has to be writable by the user running the container. It is bound in runtime to a local folder with 'barleygraph_database'
+VOLUME /barleygraph_database
 
 RUN mkdir /barleygraph
 WORKDIR /barleygraph
@@ -17,18 +20,27 @@ WORKDIR /barleygraph
 ## install system deps as root
 RUN apt update && apt install --no-install-recommends -y \
     build-essential \
+    wget \
     nano \
+    procps \
+    ca-certificates \
+    git \
     && apt clean && apt purge && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 ## Add java via conda
-RUN conda install -c conda-forge openjdk=17 -y && \
+RUN conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main && \
+    conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
+
+RUN conda install -c conda-forge openjdk=21 -y && \
     conda clean -afy
 
 # PHG v2.4.75.230 - Download and extract (adds 192MB)
-RUN wget -qO - https://api.github.com/repos/maize-genetics/phg_v2/releases/tags/2.4.75.230 \
-    | awk -F': ' '/browser_download_url/ && /\.tar/ {gsub(/"/, "", $(NF)); system("wget " $(NF))}' \
-    && tar -xvf *.tar \
-    && rm *.tar
+RUN URL=$(wget -qO- https://api.github.com/repos/maize-genetics/phg_v2/releases/tags/2.4.75.230 | grep 'browser_download_url' | grep '\.tar' | head -n 1 | cut -d '"' -f 4) && \
+    if [ -z "$URL" ]; then echo "ERROR: Could not fetch URL." && exit 1; fi && \
+    echo "Downloading from: $URL" && \
+    wget -q --show-progress "$URL" && \
+    tar -xvf *.tar && \
+    rm *.tar
 
 ENV PHGPATH /barleygraph/phg/bin
 
@@ -37,8 +49,6 @@ RUN wget -qO environment.yml https://raw.githubusercontent.com/eead-csic-compbio
 RUN conda env create -f environment.yml
 RUN conda install -n phgv2.4 -c conda-forge -y pandas matplotlib tqdm pyyaml
 RUN echo "conda activate phgv2.4" >> ~/.bashrc
-ENV PATH /opt/conda/envs/phgv2.4/bin:$PATH
-ENV CONDA_DEFAULT_ENV phgv2.4
 
 # GMAP 2013-08-31 makes tiny indexes compared to 2015-12-31 onwards (adds 121MB)
 ENV GVER 2013-08-31
@@ -55,49 +65,47 @@ RUN wget https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/refs/he
 RUN chmod +x align2graph.py
 RUN mv align2graph.py align2graph
 
-ARG graph
-LABEL graph=$graph
-RUN echo $graph
-
-# graphs, config and bits - download from GitHub repository and from local build folder; graph.tgz is the largest part of container
-RUN if [ "${graph}" = "Pan20" ]; then \
-        wget -q https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/graphs/Pan20_gmap-geno.yaml && \
-        wget -q https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/graphs/Pan20_mmap-pro.yaml; \
-    else \
-        wget -q https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/graphs/${graph}.yaml; \
-    fi
-ADD ${graph}.tgz .
-# Placeholder, until the graph.tgz files are public and available at github
-COPY test.fa test.fa
-
-# Sample list files - download from GitHub repository based on graph type
-RUN wget -qO samplelist.tsv https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/graphs/${graph}_samplelist.tsv
-
-
 # scripts - download from GitHub repository
 RUN mkdir -p python_scripts
 RUN wget -qO gmap_build.sh https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/gmap_build.sh
 RUN wget -qO build_imputation_index.sh https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/build_imputation_index.sh
 RUN wget -qO imputation.sh https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/imputation.sh
-RUN wget -qO python_scripts/haplopainting.py https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/haplopainting.py
-RUN wget -qO python_scripts/hvcf2bed.py https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/hvcf2bed.py
-COPY docker/scripts/index_${graph} index
+RUN wget -qO setup_databases.sh https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/setup_databases.sh
 
-# Ensure all scripts are executable
-RUN chmod +x gmap_build.sh build_imputation_index.sh imputation.sh index python_scripts/haplopainting.py python_scripts/hvcf2bed.py
+# Ensure correct conda paths for anaconda/miniconda image are fully exposed globally
+ENV PATH="/opt/miniconda3/bin:/opt/miniconda3/envs/phgv2.4/bin:${PATH}"
 
-# Remove .sh extensions from shell scripts
+# Reset default shell behavior to prevent build fails
+SHELL ["/bin/bash", "-c"]
+
+# Install and get phgtools utilities from Github using conda run
+RUN conda run -n phgv2.4 pip install git+https://github.com/jsarriaa/PHGv2Tools.git
+# Set it in path
+RUN echo '#!/bin/bash' > /barleygraph/phgtools && \
+    echo 'exec /opt/miniconda3/envs/phgv2.4/bin/phgtools "$@"' >> /barleygraph/phgtools && \
+    chmod +x /barleygraph/phgtools
+# ensure writeable cache directory for phgtools
+ENV MPLCONFIGDIR /tmp/matplotlib_cache
+ENV XDG_CACHE_HOME /tmp/xdg_cache
+
+# Ensure core shell scripts are executable
+RUN chmod +x gmap_build.sh build_imputation_index.sh imputation.sh setup_databases.sh
+
+# Remove .sh extensions from shell scripts and rename setup_databases.sh to setup_database
 RUN mv build_imputation_index.sh build_imputation_index && \
-    mv imputation.sh imputation
+    mv imputation.sh imputation && \
+    mv setup_databases.sh setup_database
 
-# Create wrapper scripts that use conda run
+# Create wrapper scripts that safely invoke the conda environment via conda run
 RUN echo '#!/bin/bash' > /barleygraph/haplopainting && \
-    echo 'exec conda run -n phgv2.4 python3 /barleygraph/python_scripts/haplopainting.py "$@"' >> /barleygraph/haplopainting && \
+    echo 'exec conda run -n phgv2.4 python3 -m phgtools.modules.haplopainting "$@"' >> /barleygraph/haplopainting && \
     chmod +x /barleygraph/haplopainting
 
 RUN echo '#!/bin/bash' > /barleygraph/hvcf2bed && \
-    echo 'exec conda run -n phgv2.4 python3 /barleygraph/python_scripts/hvcf2bed.py "$@"' >> /barleygraph/hvcf2bed && \
+    echo 'exec conda run -n phgv2.4 python3 -m phgtools.modules.hvcf2bed "$@"' >> /barleygraph/hvcf2bed && \
     chmod +x /barleygraph/hvcf2bed
 
+# Clean up conda package cache to reduce image size
+RUN rm -rf /opt/miniconda3/pkgs/*
+
 ENV PATH="/barleygraph:${GPATH}/bin:${PHGPATH}:${PATH}"
-SHELL ["conda", "run", "-n", "phgv2.4", "/bin/bash", "-c"]

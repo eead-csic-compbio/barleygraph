@@ -295,8 +295,8 @@ docker pull ghcr.io/eead-csic-compbio/barleygraph:Example_Ara-20260721
 You are getting a set of few arabidopsis genomes croped in some kb for chr1 & chr2 that are convinient to use.
 To build an image using the [docker file](https://github.com/eead-csic-compbio/barleygraph/blob/main/docker/Dockerfile), you only need a local file Example_Ara.tgz, which can not be uploaded here, but that you can export from the pulled docker. You might try:
 ```bash
-docker run --rm   -v /scratch/PHG_barleymap/barleygraph/graphs/Ara_toyset/gmap_db/:/gmap_db/   -it barleygraph:example_ara   /bin/bash
-tar -czvf Example_Ara .
+docker run --rm   -v /scratch/PHG_barleymap/barleygraph/graphs/Ara_toyset/gmap_db/:/gmap_db/   -it ghcr.io/eead-csic-compbio/barleygraph:Example_Ara-20260721   /bin/bash
+tar -czvf Example_Ara.tar.gz Example_Ara/
 ```
 Store the file in same folder as the Docker file and run it:
 ```bash

@@ -1,133 +1,167 @@
 #!/bin/bash
-set -e # Exit immediately if a command exits with a non-zero status
+
+# Exit immediately if an unexpected error occurs
+set -e
+
+# --- 0. Help Message ---
+if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+    echo "Usage: $0 <hvcf_folder> <read1.fq[.gz]> [read2.fq[.gz]] [-t <threads>] [--agc-file <path>]"
+    echo ""
+    echo "Description:"
+    echo "  Runs PHG imputation by mapping reads against a RopeBWT index and finding paths."
+    echo ""
+    echo "Positional Arguments:"
+    echo "  hvcf_folder       Path to the directory containing hVCF files and the .fmd index."
+    echo "  read1.fq[.gz]     First FASTQ file (single-end or paired-end read 1)."
+    echo "  read2.fq[.gz]     Second FASTQ file (optional, for paired-end)."
+    echo ""
+    echo "Options:"
+    echo "  -t, --threads     Number of threads to use (default: 8)."
+    echo "  --agc-file        Path to the AGC archive. If omitted, the script searches the hvcf_folder and its parent."
+    echo "  -h, --help        Show this help message and exit."
+    exit 0
+fi
 
 # --- 1. Argument Parsing ---
+if [ "$#" -lt 2 ]; then
+    echo "ERROR: Missing required arguments."
+    echo "Run '$0 --help' for usage information."
+    exit 1
+fi
+
+HVCF_DIR="${1%/}"
+shift 1
+
 THREADS=8
+AGC_FILE=""
 READ_FILES=()
 
-# Robustly parse flags and positional arguments in any order
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        -t|--threads) THREADS="$2"; shift 2 ;;
-        *) READ_FILES+=("$1"); shift 1 ;;
+        -t|--threads)
+            THREADS="$2"
+            if ! [[ "$THREADS" =~ ^[0-9]+$ ]]; then
+                echo "ERROR: Invalid value for threads."
+                exit 1
+            fi
+            shift 2
+            ;;
+        --agc-file)
+            AGC_FILE="$2"
+            shift 2
+            ;;
+        -*)
+            echo "ERROR: Unknown parameter $1"
+            echo "Run '$0 --help' for usage information."
+            exit 1
+            ;;
+        *)
+            READ_FILES+=("$1")
+            shift 1
+            ;;
     esac
 done
 
 if [ ${#READ_FILES[@]} -eq 0 ] || [ ${#READ_FILES[@]} -gt 2 ]; then
-    echo "ERROR: Invalid number of read files."
-    echo "Usage: $0 <read1.fq[.gz]> [read2.fq[.gz]] [-t <threads>]"
+    echo "ERROR: Invalid number of read files. Provide 1 (single-end) or 2 (paired-end)."
     exit 1
 fi
 
-READS_ARG=$(IFS=,; echo "${READ_FILES[*]}") # Joins array with commas
-echo "Processing ${#READ_FILES[@]} read file(s) with ${THREADS} threads."
-echo "Reads: ${READS_ARG}"
-
-# --- 2. Project Detection & Variable Assignment ---
-if [ -d "./Pan20/" ]; then
-    PHG_PROJECT_DIR="./Pan20"
-    PANGENOME_NAME="Pan20"
-    
-    echo "Pan20 found. Choose alignment method:"
-    echo "1) gmap_geno"
-    echo "2) mmap_pro"
-    read -p "Enter choice (1 or 2): " VARIANT_CHOICE
-    
-    if [ "$VARIANT_CHOICE" == "1" ]; then VARIANT="gmap_geno";
-    elif [ "$VARIANT_CHOICE" == "2" ]; then VARIANT="mmap_pro";
-    else echo "ERROR: Invalid choice."; exit 1; fi
-
-    HVCF_DIR="${PHG_PROJECT_DIR}/${VARIANT}/"
-    OUTPUT_BASE_DIR="${PHG_PROJECT_DIR}/${VARIANT}"
-    INDEX_PREFIX="${PANGENOME_NAME}_${VARIANT}"
-
-elif [ -d "./Med13/" ]; then
-    PHG_PROJECT_DIR="./Med13"
-    PANGENOME_NAME="Med13"
-    VARIANT=""
-    HVCF_DIR="${PHG_PROJECT_DIR}/vcf_dbs/hvcf_files"
-    OUTPUT_BASE_DIR="${PHG_PROJECT_DIR}/output"
-    INDEX_PREFIX="${PANGENOME_NAME}"
-
-elif [ -d "./Example_Ara/" ]; then
-    PHG_PROJECT_DIR="./Example_Ara"
-    PANGENOME_NAME="Example_Ara"
-    VARIANT=""
-    HVCF_DIR="${PHG_PROJECT_DIR}/vcf_dbs/hvcf_files"
-    OUTPUT_BASE_DIR="${PHG_PROJECT_DIR}/output"
-    INDEX_PREFIX="${PANGENOME_NAME}"
-
-else
-    echo "ERROR: Valid pangenome directory (Pan20, Med13, Example_Ara) not found."
+# --- 2. Path Validation & Setup ---
+if [ ! -d "$HVCF_DIR" ]; then
+    echo "ERROR: hVCF directory '$HVCF_DIR' does not exist."
     exit 1
 fi
 
-# Global Paths
-IMPUTED_VCF_DIR="${OUTPUT_BASE_DIR}/imputed_vcf_files"
-ROPEBWT_INDEX="${OUTPUT_BASE_DIR}/${INDEX_PREFIX}.fmd"
-ASSEMBLIES_AGC="${PHG_PROJECT_DIR}/vcf_dbs/assemblies.agc"
-SAMPLELIST="./samplelist.tsv"
-CONDA_ENV_PREFIX="${CONDA_ENV_PREFIX:-/opt/conda/envs/phgv2.4/}"
+# Determine the AGC file
+if [ -z "$AGC_FILE" ]; then
+    # Look in the hvcf directory using find to avoid 'set -e' crashing on ls failure
+    AGC_FILE=$(find "${HVCF_DIR}" -maxdepth 1 -name "*.agc" | head -n 1)
+    
+    # If not found, check the parent directory
+    if [ -z "$AGC_FILE" ]; then
+        AGC_FILE=$(find "${HVCF_DIR}/.." -maxdepth 1 -name "*.agc" | head -n 1)
+    fi
+fi
 
-mkdir -p "${IMPUTED_VCF_DIR}" "${PHG_PROJECT_DIR}/data"
+if [ -z "$AGC_FILE" ] || [ ! -f "$AGC_FILE" ]; then
+    echo "ERROR: Could not find an .agc file in '${HVCF_DIR}' or '${HVCF_DIR}/..'. Please provide one using --agc-file."
+    exit 1
+fi
 
-echo "Pangenome: ${PANGENOME_NAME}${VARIANT:+ ($VARIANT)}"
-echo "Index: ${ROPEBWT_INDEX}"
+# Automatically find the .fmd index built in the previous step
+ROPEBWT_INDEX=$(find "${HVCF_DIR}" -maxdepth 1 -name "*.fmd" | head -n 1)
+
+if [ -z "$ROPEBWT_INDEX" ] || [ ! -f "$ROPEBWT_INDEX" ]; then
+    echo "ERROR: No .fmd index found in ${HVCF_DIR}. Run build_imputation_index first."
+    exit 1
+fi
+
+READS_ARG=$(IFS=,; echo "${READ_FILES[*]}")
+PATH_KEYFILE="${HVCF_DIR}/pathKeyFile.txt"
+
+# --- 3. AGC Reference Extraction ---
+# Get the reference sample name dynamically from the archive
+REF_NAME=$(agc listref "$AGC_FILE" | head -n 1)
+
+if [ -z "$REF_NAME" ]; then
+    echo "ERROR: Could not identify the reference sample inside $AGC_FILE."
+    exit 1
+fi
+
+TEMP_FASTA="${HVCF_DIR}/${REF_NAME}.fa"
+
+echo "Starting PHG Imputation"
+echo "hVCF Dir:     ${HVCF_DIR}"
+echo "Index File:   ${ROPEBWT_INDEX}"
+echo "AGC Archive:  ${AGC_FILE}"
+echo "Reference:    ${REF_NAME} (Extracting dynamically)"
+echo "Reads:        ${READS_ARG}"
+echo "Threads:      ${THREADS}"
+echo "Output Dir:   ${HVCF_DIR}"
 echo "--------------------------------------------------------"
 
-# --- 3. Reference Genome Management ---
-if [ ! -f "$SAMPLELIST" ]; then
-    echo "ERROR: ${SAMPLELIST} not found."
+echo "Extracting ${REF_NAME} to temporary FASTA..."
+agc getset "$AGC_FILE" "$REF_NAME" > "$TEMP_FASTA"
+
+if [ ! -s "$TEMP_FASTA" ]; then
+    echo "ERROR: Extraction failed. The temporary FASTA file is empty."
+    rm -f "$TEMP_FASTA"
     exit 1
-fi
-
-# Extract the first matching Reference genotype
-REFERENCE_NAME=$(awk '$3=="Reference" {print $2; exit}' "$SAMPLELIST")
-[[ -z "$REFERENCE_NAME" ]] && { echo "ERROR: No 'Reference' found in ${SAMPLELIST}."; exit 1; }
-
-REFERENCE_GENOME="${PHG_PROJECT_DIR}/data/${REFERENCE_NAME}.fa"
-echo "Detected Reference genome: ${REFERENCE_NAME}"
-
-if [ ! -f "${ROPEBWT_INDEX}" ]; then
-    echo "ERROR: Index missing at ${ROPEBWT_INDEX}. Run build_imputation_index.sh first."
-    exit 1
-fi
-
-if [ ! -f "${REFERENCE_GENOME}" ]; then
-    echo "Extracting ${REFERENCE_NAME} from AGC archive..."
-    [[ ! -f "$ASSEMBLIES_AGC" ]] && { echo "ERROR: AGC archive missing at ${ASSEMBLIES_AGC}."; exit 1; }
-    
-    agc getset "$ASSEMBLIES_AGC" "$REFERENCE_NAME" > "${REFERENCE_GENOME}"
-    
-    if [ ! -s "${REFERENCE_GENOME}" ]; then
-        echo "ERROR: Extraction failed. File is empty."
-        rm -f "${REFERENCE_GENOME}" # Clean up empty file
-        exit 1
-    fi
 fi
 
 # --- 4. PHG Execution ---
 export _JAVA_OPTIONS="-Xmx256g"
+CONDA_ENV="/opt/miniconda3/envs/phgv2.4/"
 
+echo "Running phg map-reads..."
 phg map-reads \
     --index "${ROPEBWT_INDEX}" \
     --read-files "${READS_ARG}" \
-    -o "${OUTPUT_BASE_DIR}" \
+    -o "${HVCF_DIR}" \
     --threads "${THREADS}" \
     --hvcf-dir "${HVCF_DIR}" \
-    --conda-env-prefix "${CONDA_ENV_PREFIX}"
+    --conda-env-prefix "${CONDA_ENV}"
 
+if [ ! -f "${PATH_KEYFILE}" ]; then
+    echo "ERROR: phg map-reads failed to produce pathKeyFile.txt"
+    exit 1
+fi
+
+echo "Running phg find-paths..."
 phg find-paths \
-    --path-keyfile "${OUTPUT_BASE_DIR}/pathKeyFile.txt" \
+    --path-keyfile "${PATH_KEYFILE}" \
     --hvcf-dir "${HVCF_DIR}" \
     --path-type haploid \
     --kmer-index "${ROPEBWT_INDEX}" \
     --threads "${THREADS}" \
-    --reference-genome "${REFERENCE_GENOME}" \
-    --output-dir "${IMPUTED_VCF_DIR}"
+    --reference-genome "${TEMP_FASTA}" \
+    --output-dir "${HVCF_DIR}"
 
 # --- 5. Cleanup ---
-rm -f "${OUTPUT_BASE_DIR}/pathKeyFile.txt" "${REFERENCE_GENOME}"
+echo "Cleaning up temporary files..."
+rm -f "${PATH_KEYFILE}" "${TEMP_FASTA}"
 
 echo "--------------------------------------------------------"
-echo "PHG Imputation Completed. Output: ${IMPUTED_VCF_DIR}"
+echo "PHG Imputation Completed successfully."
+echo "Imputed VCF files are located in: ${HVCF_DIR}"
