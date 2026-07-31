@@ -12,13 +12,12 @@ use File::Basename qw/ fileparse /;
 # Copyright [2026] Estacion Experimental de Aula Dei-CSIC
 
 my ($cmd,$root,$key,$val,%opts,%config);
-my ($fqfile,$redo) = ('', 0);
+my ($fqfile,$output_file,$redo) = ('', '', 0);
 my ($threads,$chunksize,$minmatch,$outdir) = (5, 500, 101, '/tmp');
 my $samtoolsEXE = 'samtools';
-my $minibwaEXE  = 'minibwa';
+my $bwaEXE      = 'minibwa';
 my $bedtoolsEXE = 'bedtools';
 my $bcftoolsEXE = 'bcftools';
-my $output_file = "$outdir/$root" . ".composite.$chunksize.vcf.gz";
 
 getopts('hRB:f:c:o:m:t:k:', \%opts);
 
@@ -31,7 +30,7 @@ if(($opts{'h'})||(scalar(keys(%opts))==0)) {
   print "-m min match length                                (optional, example: -m 150, default -m $minmatch)\n";
   print "-t threads                                         (optional, example: -t 12, default -d $threads)\n";
   print "-k chunk size                                      (optional, example: -k 1000, default -k $chunksize\n";
-  print "-B path to minibwa binary                          (optional, example: -B /path/to/minibwa)\n";
+  print "-B path to [mini]bwa binary                        (optional, example: -B /path/to/[mini]bwa)\n";
   print "-R redo all steps even if results are in place     (optional, by default previous results are re-used)\n";
   #print "\nPrimary citation: https://www.biorxiv.org/content/10.1101/2025.07.17.665301v1\n";
   exit(0);
@@ -103,14 +102,16 @@ if(defined($opts{'k'}) && $opts{'k'} >= 0) {
 }
 
 if(defined($opts{'B'})) {
-  $minibwaEXE = $opts{'B'}
+  $bwaEXE = $opts{'B'}
 }
 
 if(defined($opts{'R'})) {
   $redo = 1
 }
 
-warn "## $0 -f $fqfile -c $opts{'c'} -o $outdir -m $minmatch -t $threads -k $chunksize -B $minibwaEXE -R $redo\n\n";
+$output_file = "$outdir/$root" . ".composite.$chunksize.vcf.gz";
+
+warn "## $0 -f $fqfile -c $opts{'c'} -o $outdir -m $minmatch -t $threads -k $chunksize -B $bwaEXE -R $redo\n\n";
 
 # 0.1) check output
 if($redo == 0 && -e $output_file) {
@@ -185,11 +186,19 @@ if($redo == 1 || !-e $composite_chunks_bam) {
   $cmd = "$bedtoolsEXE getfasta -fi $composite_file -bed $comp_chunks_bed -fo $comp_chunks_file";
   run_cmd($cmd, "# 5.1 Chunking composite fasta ...") if(!-e $comp_chunks_file);
 
-  $cmd = "$minibwaEXE index -t $threads $config{'reference-fasta'}";
+  $cmd = "$bwaEXE index -t $threads $config{'reference-fasta'}";
+  if($bwaEXE !~ /minibwa/) {
+    $ref_index_file   = $config{'reference-fasta'} . '.sa';
+    $cmd = "$bwaEXE index $config{'reference-fasta'}";
+  }
   run_cmd($cmd, "# 5.2 Indexing reference fasta ...") if(!-e $ref_index_file);
 
-  $cmd = "$minibwaEXE map -t $threads $config{'reference-fasta'} $comp_chunks_file | " .
+  $cmd = "$bwaEXE map -t $threads $config{'reference-fasta'} $comp_chunks_file | " .
     "$samtoolsEXE sort -@ $threads -o $composite_chunks_bam && $samtoolsEXE index -c -@ $threads $composite_chunks_bam";
+  if($bwaEXE !~ /minibwa/) {
+    $cmd = "$bwaEXE mem -t $threads $config{'reference-fasta'} $comp_chunks_file | " .
+    "$samtoolsEXE sort -@ $threads -o $composite_chunks_bam && $samtoolsEXE index -c -@ $threads $composite_chunks_bam";
+  }
   run_cmd($cmd, "# 5.3 Mapping composite fasta ...");  
   
   #unlink(@temp);
@@ -224,5 +233,3 @@ sub run_cmd {
       die "# EXIT: command failed ($cmd)\n";
   }
 }
-
-
