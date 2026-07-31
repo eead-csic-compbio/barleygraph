@@ -26,7 +26,8 @@ my $bcftoolsEXE = 'bcftools';
 getopts('hARB:f:c:o:m:t:k:', \%opts);
 
 if(($opts{'h'})||(scalar(keys(%opts))==0)) {
-  print "\nusage: $0 [options]\n\n";
+  print "Maps reads in FASTQ file to imputate and call variants in output gVCF file\n\n";
+  print "Usage: $0 [options]\n\n";
   print "-h this message\n";
   print "-f input FASTQ file                                (example: -f sample.fastq.gz)\n";
   print "-c graph config file                               (example: -c /path/to/graph/config.impute.yaml)\n";
@@ -225,9 +226,9 @@ if($redo == 1 || !-e $composite_chunks_bam) {
 if($redo == 1 || !-e $output_file) {
   $cmd = "$bcftoolsEXE mpileup -Ou -f $config{'reference-fasta'} $composite_chunks_bam | ";
   if($allsites == 1) {
-    "$bcftoolsEXE call -m -Oz | bcftools view -g ^het -o $output_file";
+    $cmd .= "$bcftoolsEXE call -m --ploidy 2 -Oz | bcftools view -g ^het -o $output_file";
   } else {
-    "$bcftoolsEXE call -v -Oz | bcftools view -g ^het -o $output_file";
+    $cmd .= "$bcftoolsEXE call -m --ploidy 2 -v -Oz | bcftools view -g ^het -o $output_file";
   }
 
   run_cmd($cmd, "# 6 Variant calling ...");
