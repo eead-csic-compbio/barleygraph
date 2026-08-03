@@ -69,7 +69,7 @@ RUN mv align2graph.py align2graph
 RUN mkdir -p python_scripts
 RUN wget -qO gmap_build.sh https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/gmap_build.sh
 RUN wget -qO build_imputation_index.sh https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/build_imputation_index.sh
-RUN wget -qO imputation.sh https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/imputation.sh
+RUN wget -qO imputation.pl https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/imputation.pl
 RUN wget -qO setup_databases.sh https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/setup_databases.sh
 
 # Ensure correct conda paths for anaconda/miniconda image are fully exposed globally
@@ -93,7 +93,7 @@ RUN chmod +x gmap_build.sh build_imputation_index.sh imputation.sh setup_databas
 
 # Remove .sh extensions from shell scripts and rename setup_databases.sh to setup_database
 RUN mv build_imputation_index.sh build_imputation_index && \
-    mv imputation.sh imputation && \
+    mv imputation.pl imputation && \
     mv setup_databases.sh setup_database
 
 # Create wrapper scripts that safely invoke the conda environment via conda run
@@ -109,3 +109,4 @@ RUN echo '#!/bin/bash' > /barleygraph/hvcf2bed && \
 RUN rm -rf /opt/miniconda3/pkgs/*
 
 ENV PATH="/barleygraph:${GPATH}/bin:${PHGPATH}:${PATH}"
+ENV DBPATH="barleygraph_database"
