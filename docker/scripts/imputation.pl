@@ -67,7 +67,7 @@ if(defined($opts{'G'})) {
 
 # actually read config file
 open(CONFIG,"<",$cfile) ||
-  die "# ERROR: cannot read config file $cfile\n";
+  die "# ERROR: cannot read config file $cfile, does \$DBPATH need to be set?\n";
 while(<CONFIG>) {
   next if(/^#/);
   if(/([^:]+):\s+(\S+)/) {
@@ -156,8 +156,9 @@ if(!`which phg`) {
 
 # 1) map reads
 my $mapfile = "$outdir/$root" . '_1_readMapping.txt';
+my $hvcf_file = "$outdir/$root" . '_1.h.vcf';
 push(@temp, $mapfile);
-if($redo == 1 || !-e $mapfile) {
+if($redo == 1 || !-e $hvcf_file) {
   $cmd = "phg map-reads --index $config{'kmer-index-file'} --read-files $fqfiles -o $outdir " .
     "--hvcf-dir $config{'hvcf-dir'} --threads $threads --min-mem-length $minmatch "; 
   run_cmd($cmd, "# 1 Running phg map-reads ...");
@@ -167,7 +168,6 @@ if($redo == 1 || !-e $mapfile) {
 }	
 
 # 2) find paths
-my $hvcf_file = "$outdir/$root" . '_1.h.vcf';
 if($redo == 1 || !-e $hvcf_file) {
 
   # 2.1) make sure reference FASTA exists
@@ -220,14 +220,14 @@ if($redo == 1 || !-e $composite_index_file) {
 
 # 5) chunk composite sequence
 my $composite_chunks_bam = "$outdir/$root" . "_1_composite.$chunksize.bam";
-push(@temp, $composite_chunks_bam);
+push(@temp, $composite_chunks_bam, "$composite_chunks_bam.csi");
 if($redo == 1 || !-e $composite_chunks_bam) {
 
   my $comp_genome_bed  = "$outdir/$root" . '_1_comp_genome.bed';
   my $comp_chunks_bed  = "$outdir/$root" . '_1_comp_chunks.bed';
   my $comp_chunks_file = "$outdir/$root" . '_1_comp_chunks.fa';
   my $ref_index_file   = $config{'reference-fasta'} . '.mbw';
-  my @temp2 = ($comp_genome_bed, $comp_chunks_bed, $comp_chunks_file, $ref_index_file);
+  my @temp2 = ($comp_genome_bed, $comp_chunks_bed, $comp_chunks_file);
 
   $cmd = "perl -lane 'print \"\$F[0]\t0\t\$F[1]\"' $composite_index_file > $comp_genome_bed";
   run_cmd($cmd) if(!-e $comp_genome_bed || $redo == 1);
@@ -286,7 +286,7 @@ exit(0);
 sub run_cmd {
   my ($cmd, $message) = @_;
 
-  print $message if($message);
+  print "$message\n" if($message);
   system($cmd);
   if($? != 0) {
       die "# EXIT: command failed ($cmd)\n";
