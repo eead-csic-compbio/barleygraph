@@ -32,8 +32,8 @@ if(($opts{'h'})||(scalar(keys(%opts))==0)) {
   print "-h this message\n";
   print "-1 input FASTQ file                                (example: -1 sample1.fq.gz)\n";
   print "-2 paired FASTQ file                               (optional, example: -2 sample2.fq.gz)\n";
-  print "-G graph name, should be folder within \$DBPATH     (optional, example: -G Pan20-mmap_pro)\n";
-  print "-c graph config file                               (if -G not set, example: -c /path/graph/config.impute.yaml)\n";
+  print "-G graph name, should be folder within \$DBPATH     (-G or -c, example: -G Pan20-mmap_pro)\n";
+  print "-c graph config file                               (-G or -c, example: -c /path/graph/config.impute.yaml)\n";
   print "-g produce gVCF file                               (optional, requires vcf_dbs in config)\n";
   print "-o output folder                                   (optional, example: -o mysample, default -o $outdir)\n";
   print "-m min match length                                (optional, example: -m 150, default -m $minmatch)\n";
@@ -72,7 +72,7 @@ while(<CONFIG>) {
   next if(/^#/);
   if(/([^:]+):\s+(\S+)/) {
     ($key,$val) = ($1, $2); 
-    if(!-e $val) {
+    if($key ne "reference-fasta" && !-e $val) {
       die "# ERROR: bad value for '$key' in $opts{'c'}\n";
     } elsif($key eq 'kmer-index-file') {
       if(!-e $val.'.ssa') {
@@ -141,7 +141,7 @@ if($dogVCF == 0) {
 
 print "## read file(s): $fqfiles\n";
 print "## config file: $cfile\n";
-print "## params: -o $outdir -g $dogVCF -m $minmatch -t $threads -k $chunksize -B $bwaEXE -A $allsites -R $redo\n\n";
+print "## params: -o $outdir -g $dogVCF -m $minmatch -t $threads -k $chunksize -A $allsites -R $redo\n\n";
 
 # 0.1) check output
 if($redo == 0 && -e $output_file) {
@@ -158,8 +158,8 @@ if(!`which phg`) {
 my $mapfile = "$outdir/$root" . '_1_readMapping.txt';
 push(@temp, $mapfile);
 if($redo == 1 || !-e $mapfile) {
-  $cmd = "phg map-reads --index $config{'kmer-index-file'} --read-files $fqfiles -o $outdir --hvcf-dir $config{'hvcf-dir'} " .
-    "--threads $threads --min-mem-length $minmatch "; #--conda-env-prefix $config{'conda-env-prefix'}";
+  $cmd = "phg map-reads --index $config{'kmer-index-file'} --read-files $fqfiles -o $outdir " .
+    "--hvcf-dir $config{'hvcf-dir'} --threads $threads --min-mem-length $minmatch "; 
   run_cmd($cmd, "# 1 Running phg map-reads ...");
 
 } else {
@@ -168,10 +168,21 @@ if($redo == 1 || !-e $mapfile) {
 
 # 2) find paths
 my $hvcf_file = "$outdir/$root" . '_1.h.vcf';
-push(@temp, $hvcf_file);
 if($redo == 1 || !-e $hvcf_file) {
-  $cmd = "phg find-paths --read-files $mapfile --output-dir $outdir --hvcf-dir $config{'hvcf-dir'} --path-type haploid " .
-    "--threads $threads --reference-genome $config{'reference-fasta'}";
+
+  # 2.1) make sure reference FASTA exists
+  if(!-e $config{'reference-fasta'}) {
+    my $rname = `agc listref $config{'assemblies-agc'}`;
+    chomp $rname; 
+    $cmd = "agc getset $config{'assemblies-agc'}  $rname > $config{'reference-fasta'}";
+    run_cmd($cmd, "# 2.1 Extracting reference sequence (1st time only)...");
+
+  } elsif(!-e $config{'assemblies-agc'}) {
+    die "# ERROR: cannot find $config{'assemblies-agc'}, please fix $cfile\n";
+  }	  
+
+  $cmd = "phg find-paths --read-files $mapfile --output-dir $outdir --hvcf-dir $config{'hvcf-dir'} " .
+    "--path-type haploid --threads $threads --reference-genome $config{'reference-fasta'}";
   run_cmd($cmd, "# 2 Running phg find-paths ...");
 
 } else {
@@ -180,6 +191,7 @@ if($redo == 1 || !-e $hvcf_file) {
 
 if($dogVCF == 0) {
   print "## output: $output_file\n";
+  unlink(@temp);
   exit(0);
 }
 
@@ -188,7 +200,7 @@ my $composite_file = "$outdir/$root" . '_1_composite.fa';
 push(@temp, $composite_file);
 if($redo == 1 || !-e $composite_file) {
   $cmd = "phg create-fasta-from-hvcf --hvcf-file $hvcf_file -o $outdir --db-path $config{'db-path'} " .
-    "--range-bedfile $config{'range-bed'} --fasta-type composite"; #--conda-env-prefix $config{'conda-env-prefix'}";
+    "--range-bedfile $config{'range-bed'} --fasta-type composite";
   run_cmd($cmd, "# 3 Running phg create-fasta-from-hvcf ...");
   
 } else {
