@@ -34,7 +34,7 @@ if(($opts{'h'})||(scalar(keys(%opts))==0)) {
   print "-o output folder                                   (optional, example: -o mysample, default -o $outdir)\n";
   print "-m min match length                                (optional, example: -m 150, default -m $minmatch)\n";
   print "-t threads                                         (optional, example: -t 12, default -d $threads)\n";
-  print "-k chunk size                                      (optional, example: -k 1000, default -k $chunksize\n";
+  print "-k chunk size in bases                             (optional, example: -k 1000, default -k $chunksize\n";
   print "-B path to [mini]bwa binary                        (optional, example: -B /path/to/[mini]bwa)\n";
   print "-A all sites in output VCF, not just variants      (optional, by default only variants are considered)\n";
   print "-R redo all steps even if results are in place     (optional, by default previous results are re-used)\n";
