@@ -4,7 +4,7 @@ use warnings;
 use Getopt::Std;
 use File::Basename qw/ fileparse /; 
 
-# Maps reads in FASTQ file(s) on indexed PHG pangenome graph in order to imputate and call
+# Map reads in FASTQ file(s) on indexed PHG pangenome graph in order to imputate and call
 # haplotypes across graph ranges. By default produces hVCF output.
 # Optionally can produce a PHG-composite FASTA sequence which is mapped back to the graph reference
 # to call variants finally output in a gVCF file.
@@ -16,7 +16,7 @@ use File::Basename qw/ fileparse /;
 # Copyright [2026] Estacion Experimental de Aula Dei-CSIC
 
 my ($cmd,$root,$key,$val,$cfile,%opts,%config,@temp);
-my ($fqfiles,$output_file,$redo,$allsites) = ('', '', 0, 0);
+my ($fqfiles,$output_file,$dogVCF,$redo,$allsites) = ('', '', 0, 0, 0);
 my ($threads,$chunksize,$minmatch,$outdir) = (5, 500, 101, '/tmp');
 my $agcEXE      = 'agc';
 my $samtoolsEXE = 'samtools';
@@ -24,7 +24,7 @@ my $bwaEXE      = 'minibwa';
 my $bedtoolsEXE = 'bedtools';
 my $bcftoolsEXE = 'bcftools';
 
-getopts('hARB:1:2:G:c:o:m:t:k:', \%opts);
+getopts('hARgB:1:2:G:c:o:m:t:k:', \%opts);
 
 if(($opts{'h'})||(scalar(keys(%opts))==0)) {
   print "Maps reads in FASTQ file to imputate and call haplotypes from graph.\n\n";
@@ -34,6 +34,7 @@ if(($opts{'h'})||(scalar(keys(%opts))==0)) {
   print "-2 paired FASTQ file                               (optional, example: -2 sample2.fq.gz)\n";
   print "-G graph name, should be folder within \$DBPATH     (optional, example: -G Pan20-mmap_pro)\n";
   print "-c graph config file                               (if -G not set, example: -c /path/graph/config.impute.yaml)\n";
+  print "-g produce gVCF file                               (optional, requires vcf_dbs in config)\n";
   print "-o output folder                                   (optional, example: -o mysample, default -o $outdir)\n";
   print "-m min match length                                (optional, example: -m 150, default -m $minmatch)\n";
   print "-t threads                                         (optional, example: -t 12, default -d $threads)\n";
@@ -105,6 +106,10 @@ if(defined($opts{'o'})) {
   }
 }
 
+if(defined($opts{'g'})) {
+  $dogVCF = 1
+}
+
 if(defined($opts{'m'}) && $opts{'m'} >= 0) {
   $minmatch = $opts{'m'}
 }
@@ -130,10 +135,13 @@ if(defined($opts{'R'})) {
 }
 
 $output_file = "$outdir/$root" . ".$chunksize.vcf.gz";
+if($dogVCF == 0) {
+  $output_file = "$outdir/$root" . '_1.h.vcf';
+}
 
 print "## read file(s): $fqfiles\n";
 print "## config file: $cfile\n";
-print "## params: -o $outdir -m $minmatch -t $threads -k $chunksize -B $bwaEXE -A $allsites -R $redo\n\n";
+print "## params: -o $outdir -g $dogVCF -m $minmatch -t $threads -k $chunksize -B $bwaEXE -A $allsites -R $redo\n\n";
 
 # 0.1) check output
 if($redo == 0 && -e $output_file) {
@@ -168,6 +176,11 @@ if($redo == 1 || !-e $hvcf_file) {
 
 } else {
   print "# 2 re-using $hvcf_file\n";
+}
+
+if($dogVCF == 0) {
+  print "## output: $output_file\n";
+  exit(0);
 }
 
 # 3) create fasta from hvcf
