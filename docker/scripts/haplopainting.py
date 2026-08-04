@@ -234,7 +234,7 @@ def generate_df(bed_files, hapID_color_map, genotype_group_sort_hash, hvcfs_fold
     
     return df
 
-def plot_haplotype_painting(hvcfs_folder, chr_to_plot, chr_list, hapID_color_map, genotype_group_sort_hash, df, region_start, region_end, plot_pangenomes, verbose=False):
+def plot_haplotype_painting(hvcfs_folder, chr_to_plot, chr_list, hapID_color_map, genotype_group_sort_hash, df, region_start, region_end, plot_pangenomes, verbose=False, format='png'):
     base_output_dir = os.path.join(hvcfs_folder, "plots")
     os.makedirs(base_output_dir, exist_ok=True)
 
@@ -242,9 +242,9 @@ def plot_haplotype_painting(hvcfs_folder, chr_to_plot, chr_list, hapID_color_map
 
     for chrom in chromosomes_to_process:
         if region_start and region_end:
-            chrom_output_png = os.path.join(base_output_dir, f"{chrom}_{region_start}-{region_end}_haplotype_painting.png")
+            chrom_output_image = os.path.join(base_output_dir, f"{chrom}_{region_start}-{region_end}_haplotype_painting.{format}")
         else:
-            chrom_output_png = os.path.join(base_output_dir, f"{chrom}_FULL_haplotype_painting.png")
+            chrom_output_image = os.path.join(base_output_dir, f"{chrom}_FULL_haplotype_painting.{format}")
 
         start_time_chr = time.time()
         cdf = df[df['chr'] == chrom].copy()
@@ -346,10 +346,10 @@ def plot_haplotype_painting(hvcfs_folder, chr_to_plot, chr_list, hapID_color_map
             except:
                 plt.subplots_adjust(left=0.1, right=0.85, top=0.93, bottom=0.08)
 
-        plt.savefig(chrom_output_png, dpi=300, bbox_inches='tight', pad_inches=0.3)
+        plt.savefig(chrom_output_image, dpi=300, bbox_inches='tight', pad_inches=0.3)
         plt.close()
         
-        print(f"Plot saved: {chrom_output_png}")
+        print(f"Plot saved: {chrom_output_image}")
 
 
 #######################################################################################################
@@ -415,7 +415,7 @@ def main(args=None):
         plot_haplotype_painting(
             hvcfs_folder, chr_to_plot, chr_list, hapID_color_map, 
             genotype_group_sort_hash, df, region_start, region_end, 
-            plot_pangenomes, verbose=verbose
+            plot_pangenomes, verbose=verbose, format='pdf'
         )
 
     except Exception as e:
