@@ -32,7 +32,7 @@ if(($opts{'h'})||(scalar(keys(%opts))==0)) {
   print "-h this message\n";
   print "-1 input FASTQ file                                (example: -1 sample1.fq.gz)\n";
   print "-2 paired FASTQ file                               (optional, example: -2 sample2.fq.gz)\n";
-  print "-G graph name, should be folder within \$DBPATH     (-G or -c, example: -G Pan20-mmap_pro)\n";
+  print "-G graph name, should be folder within \$DBPATH     (-G or -c, example: -G Pan20-mmap-pro)\n";
   print "-c graph config file                               (-G or -c, example: -c /path/graph/config.impute.yaml)\n";
   print "-g produce gVCF file                               (optional, requires vcf_dbs in config)\n";
   print "-o output folder                                   (optional, example: -o mysample, default -o $outdir)\n";
