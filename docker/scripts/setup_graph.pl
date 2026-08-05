@@ -38,7 +38,7 @@ if(($opts{'h'})||(scalar(keys(%opts))==0)) {
 
 if(defined($opts{'l'})) {
   foreach $graph (sort keys(%graphs)) {
-    print "$graph => $graphs{$graph}{'wgetpat'}\n";
+    print "$graph => $graphs{$graph}{'URL'}\n";
   }
   exit(0);
 }
