@@ -4,7 +4,7 @@ LABEL authors="Joan Sarria, Bruno Contreras Moreira"
 LABEL description="Container with align2graph and selected tools"
 LABEL license="GPLv3"
 LABEL maintainers="compbio@eead.csic.es"
-LABEL org.opencontainers.image.source https://github.com/eead-csic-compbio/barleygraph
+LABEL org.opencontainers.image.source="https://github.com/eead-csic-compbio/barleygraph"
 
 USER root
 
@@ -44,7 +44,7 @@ RUN URL=$(wget -qO- https://api.github.com/repos/maize-genetics/phg_v2/releases/
     tar -xvf *.tar && \
     rm *.tar
 
-ENV PHGPATH /barleygraph/phg/bin
+ENV PHGPATH=/barleygraph/phg/bin
 
 # PHG and python deps (adds 2.5GB)
 RUN wget -qO environment.yml https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/environment.yml
@@ -53,8 +53,8 @@ RUN conda install -n phgv2.4 -c conda-forge -y pandas matplotlib tqdm pyyaml
 RUN echo "conda activate phgv2.4" >> ~/.bashrc
 
 # GMAP 2013-08-31 makes tiny indexes compared to 2015-12-31 onwards (adds 121MB)
-ENV GVER 2013-08-31
-ENV GPATH /barleygraph/gmap-${GVER}/local
+ENV GVER=2013-08-31
+ENV GPATH=/barleygraph/gmap-${GVER}/local
 RUN wget http://research-pub.gene.com/gmap/src/gmap-gsnap-${GVER}.tar.gz
 RUN tar xfz gmap-gsnap-${GVER}.tar.gz && cd gmap-${GVER} && \
     ./configure --prefix=${GPATH} CFLAGS="-O3 -Dstat64=stat -Wno-implicit-function-declaration" && \
@@ -87,8 +87,8 @@ RUN echo '#!/bin/bash' > /barleygraph/phgtools && \
     echo 'exec /opt/miniconda3/envs/phgv2.4/bin/phgtools "$@"' >> /barleygraph/phgtools && \
     chmod +x /barleygraph/phgtools
 # Ensure writeable cache directory for phgtools
-ENV MPLCONFIGDIR /tmp/matplotlib_cache
-ENV XDG_CACHE_HOME /tmp/xdg_cache
+ENV MPLCONFIGDIR=/tmp/matplotlib_cache
+ENV XDG_CACHE_HOME=/tmp/xdg_cache
 
 # Ensure scripts are executable
 RUN chmod +x gmap_build.sh build_imputation_index.sh imputation.pl setup_graph.pl
