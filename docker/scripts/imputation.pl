@@ -72,15 +72,15 @@ while(<CONFIG>) {
   next if(/^#/);
   if(/([^:]+):\s+(\S+)/) {
     ($key,$val) = ($1, $2); 
-    if($key ne "reference-fasta" && !-e $val) {
+    if($key ne "reference_fasta" && !-e $val) {
       die "# ERROR: bad value for '$key' in $opts{'c'}\n";
-    } elsif($key eq 'kmer-index-file') {
+    } elsif($key eq 'kmer_index') {
       if(!-e $val.'.ssa') {
         die "# ERROR: need also kmer index file $val\.ssa, check $opts{'c'} ($key)\n";
       } elsif(!-e $val.'.len.gz') {
         die "# ERROR: need also kmer index file $val\.len.gz, check $opts{'c'} ($key)\n";
       } 
-    } elsif($key eq 'hvcf-dir') {
+    } elsif($key eq 'hvcf_bed') {
       opendir(HVCF,$val) ||
         die "# ERROR: cannot list $val\n";
       my @files = grep{/\.h.vcf.gz/} readdir(HVCF);
@@ -159,8 +159,8 @@ my $mapfile = "$outdir/$root" . '_1_readMapping.txt';
 my $hvcf_file = "$outdir/$root" . '_1.h.vcf';
 push(@temp, $mapfile);
 if($redo == 1 || !-e $hvcf_file) {
-  $cmd = "phg map-reads --index $config{'kmer-index-file'} --read-files $fqfiles -o $outdir " .
-    "--hvcf-dir $config{'hvcf-dir'} --threads $threads --min-mem-length $minmatch "; 
+  $cmd = "phg map-reads --index $config{'kmer_index'} --read-files $fqfiles -o $outdir " .
+    "--hvcf_bed $config{'hvcf_bed'} --threads $threads --min-mem-length $minmatch "; 
   run_cmd($cmd, "# 1 Running phg map-reads ...");
 
 } else {
@@ -171,18 +171,18 @@ if($redo == 1 || !-e $hvcf_file) {
 if($redo == 1 || !-e $hvcf_file) {
 
   # 2.1) make sure reference FASTA exists
-  if(!-e $config{'reference-fasta'}) {
-    my $rname = `agc listref $config{'assemblies-agc'}`;
+  if(!-e $config{'reference_fasta'}) {
+    my $rname = `agc listref $config{'agc_assemblies'}`;
     chomp $rname; 
-    $cmd = "agc getset $config{'assemblies-agc'}  $rname > $config{'reference-fasta'}";
+    $cmd = "agc getset $config{'agc_assemblies'} $rname > $config{'reference_fasta'}";
     run_cmd($cmd, "# 2.1 Extracting reference sequence (1st time only)...");
 
-  } elsif(!-e $config{'assemblies-agc'}) {
-    die "# ERROR: cannot find $config{'assemblies-agc'}, please fix $cfile\n";
+  } elsif(!-e $config{'agc_assemblies'}) {
+    die "# ERROR: cannot find $config{'agc_assemblies'}, please fix $cfile\n";
   }	  
 
-  $cmd = "phg find-paths --read-files $mapfile --output-dir $outdir --hvcf-dir $config{'hvcf-dir'} " .
-    "--path-type haploid --threads $threads --reference-genome $config{'reference-fasta'}";
+  $cmd = "phg find-paths --read-files $mapfile --output-dir $outdir --hvcf_bed $config{'hvcf_bed'} " .
+    "--path-type haploid --threads $threads --reference-genome $config{'reference_fasta'}";
   run_cmd($cmd, "# 2 Running phg find-paths ...");
 
 } else {
@@ -199,8 +199,8 @@ if($dogVCF == 0) {
 my $composite_file = "$outdir/$root" . '_1_composite.fa';
 push(@temp, $composite_file);
 if($redo == 1 || !-e $composite_file) {
-  $cmd = "phg create-fasta-from-hvcf --hvcf-file $hvcf_file -o $outdir --db-path $config{'db-path'} " .
-    "--range-bedfile $config{'range-bed'} --fasta-type composite";
+  $cmd = "phg create-fasta-from-hvcf --hvcf-file $hvcf_file -o $outdir --db-path $config{'db_path'} " .
+    "--range_bedfile $config{'range_bed'} --fasta-type composite";
   run_cmd($cmd, "# 3 Running phg create-fasta-from-hvcf ...");
   
 } else {
@@ -226,7 +226,7 @@ if($redo == 1 || !-e $composite_chunks_bam) {
   my $comp_genome_bed  = "$outdir/$root" . '_1_comp_genome.bed';
   my $comp_chunks_bed  = "$outdir/$root" . '_1_comp_chunks.bed';
   my $comp_chunks_file = "$outdir/$root" . '_1_comp_chunks.fa';
-  my $ref_index_file   = $config{'reference-fasta'} . '.mbw';
+  my $ref_index_file   = $config{'reference_fasta'} . '.mbw';
   my @temp2 = ($comp_genome_bed, $comp_chunks_bed, $comp_chunks_file);
 
   $cmd = "perl -lane 'print \"\$F[0]\t0\t\$F[1]\"' $composite_index_file > $comp_genome_bed";
@@ -238,17 +238,17 @@ if($redo == 1 || !-e $composite_chunks_bam) {
   $cmd = "$bedtoolsEXE getfasta -fi $composite_file -bed $comp_chunks_bed -fo $comp_chunks_file";
   run_cmd($cmd, "# 5.1 Chunking composite fasta ...") if(!-e $comp_chunks_file || $redo == 1);
 
-  $cmd = "$bwaEXE index -t $threads $config{'reference-fasta'}";
+  $cmd = "$bwaEXE index -t $threads $config{'reference_fasta'}";
   if($bwaEXE !~ /minibwa/) {
-    $ref_index_file   = $config{'reference-fasta'} . '.sa';
-    $cmd = "$bwaEXE index $config{'reference-fasta'}";
+    $ref_index_file   = $config{'reference_fasta'} . '.sa';
+    $cmd = "$bwaEXE index $config{'reference_fasta'}";
   }
   run_cmd($cmd, "# 5.2 Indexing reference fasta ...") if(!-e $ref_index_file || $redo == 1);
 
-  $cmd = "$bwaEXE map -t $threads $config{'reference-fasta'} $comp_chunks_file | " .
+  $cmd = "$bwaEXE map -t $threads $config{'reference_fasta'} $comp_chunks_file | " .
     "$samtoolsEXE sort -@ $threads -o $composite_chunks_bam && $samtoolsEXE index -c -@ $threads $composite_chunks_bam";
   if($bwaEXE !~ /minibwa/) {
-    $cmd = "$bwaEXE mem -t $threads $config{'reference-fasta'} $comp_chunks_file | " .
+    $cmd = "$bwaEXE mem -t $threads $config{'reference_fasta'} $comp_chunks_file | " .
     "$samtoolsEXE sort -@ $threads -o $composite_chunks_bam && $samtoolsEXE index -c -@ $threads $composite_chunks_bam";
   }
   run_cmd($cmd, "# 5.3 Mapping composite fasta ...");
@@ -261,7 +261,7 @@ if($redo == 1 || !-e $composite_chunks_bam) {
 
 # 6) variant call, produces final gVCF output file with het sites filtered out
 if($redo == 1 || !-e $output_file) {
-  $cmd = "$bcftoolsEXE mpileup -Ou -f $config{'reference-fasta'} $composite_chunks_bam | ";
+  $cmd = "$bcftoolsEXE mpileup -Ou -f $config{'reference_fasta'} $composite_chunks_bam | ";
   if($allsites == 1) {
     $cmd .= "$bcftoolsEXE call -m --ploidy 2 -Oz | bcftools view -g ^het -o $output_file";
   } else {
