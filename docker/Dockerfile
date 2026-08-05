@@ -8,11 +8,13 @@ LABEL org.opencontainers.image.source https://github.com/eead-csic-compbio/barle
 
 USER root
 
-# bound in runtime to writable local dir with 'gmap_db'
+# Bound in runtime to writable local dir. Persistent storage of GMAP db files.
+# Required by align2graph only, can be left unset for imputation jobs.
 VOLUME /gmap_db
 
-# Output folder, which has to be writable by the user running the container. It is bound in runtime to a local folder with 'barleygraph_database'
-VOLUME /barleygraph_database
+# Bound in runtime to writable local dir. Persistent storage of PHG graph files 
+# and possibly results.
+VOLUME /graph_db
 
 RUN mkdir /barleygraph
 WORKDIR /barleygraph
@@ -55,7 +57,7 @@ ENV GVER 2013-08-31
 ENV GPATH /barleygraph/gmap-${GVER}/local
 RUN wget http://research-pub.gene.com/gmap/src/gmap-gsnap-${GVER}.tar.gz
 RUN tar xfz gmap-gsnap-${GVER}.tar.gz && cd gmap-${GVER} && \
-    ./configure --prefix=${GPATH} CFLAGS="-O3 -Dstat64=stat -Wno-implicit-function-declaration -Wno-incompatible-pointer-types" && \
+    ./configure --prefix=${GPATH} CFLAGS="-O3" && \
     make && make install && make clean
 RUN rm gmap-gsnap-${GVER}.tar.gz
 
@@ -65,12 +67,12 @@ RUN wget https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/refs/he
 RUN chmod +x align2graph.py
 RUN mv align2graph.py align2graph
 
-# scripts - download from GitHub repository
-RUN mkdir -p python_scripts
+# scripts and config files from GitHub repository
 RUN wget -qO gmap_build.sh https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/gmap_build.sh
 RUN wget -qO build_imputation_index.sh https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/build_imputation_index.sh
 RUN wget -qO imputation.pl https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/imputation.pl
-RUN wget -qO setup_databases.sh https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/setup_databases.sh
+RUN wget -qO setup_graph.pl https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/setup_graph.pl
+RUN wget -q0 https://github.com/eead-csic-compbio/barleygraph/blob/main/graphs/Pan20-mmap-pro.yaml
 
 # Ensure correct conda paths for anaconda/miniconda image are fully exposed globally
 ENV PATH="/opt/miniconda3/bin:/opt/miniconda3/envs/phgv2.4/bin:${PATH}"
@@ -84,17 +86,17 @@ RUN conda run -n phgv2.4 pip install git+https://github.com/jsarriaa/PHGv2Tools.
 RUN echo '#!/bin/bash' > /barleygraph/phgtools && \
     echo 'exec /opt/miniconda3/envs/phgv2.4/bin/phgtools "$@"' >> /barleygraph/phgtools && \
     chmod +x /barleygraph/phgtools
-# ensure writeable cache directory for phgtools
+# Ensure writeable cache directory for phgtools
 ENV MPLCONFIGDIR /tmp/matplotlib_cache
 ENV XDG_CACHE_HOME /tmp/xdg_cache
 
-# Ensure core shell scripts are executable
-RUN chmod +x gmap_build.sh build_imputation_index.sh imputation.sh setup_databases.sh
+# Ensure scripts are executable
+RUN chmod +x gmap_build.sh build_imputation_index.sh imputation.pl setup_graph.pl
 
 # Remove .sh extensions from shell scripts and rename setup_databases.sh to setup_database
 RUN mv build_imputation_index.sh build_imputation_index && \
     mv imputation.pl imputation && \
-    mv setup_databases.sh setup_database
+    mv setup_graph.sh setup_graph
 
 # Create wrapper scripts that safely invoke the conda environment via conda run
 RUN echo '#!/bin/bash' > /barleygraph/haplopainting && \
@@ -106,7 +108,6 @@ RUN echo '#!/bin/bash' > /barleygraph/hvcf2bed && \
     chmod +x /barleygraph/hvcf2bed
 
 # Clean up conda package cache to reduce image size
-RUN rm -rf /opt/miniconda3/pkgs/*
+#RUN rm -rf /opt/miniconda3/pkgs/*
 
 ENV PATH="/barleygraph:${GPATH}/bin:${PHGPATH}:${PATH}"
-ENV DBPATH="barleygraph_database"
