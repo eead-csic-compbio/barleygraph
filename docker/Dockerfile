@@ -57,7 +57,7 @@ ENV GVER 2013-08-31
 ENV GPATH /barleygraph/gmap-${GVER}/local
 RUN wget http://research-pub.gene.com/gmap/src/gmap-gsnap-${GVER}.tar.gz
 RUN tar xfz gmap-gsnap-${GVER}.tar.gz && cd gmap-${GVER} && \
-    ./configure --prefix=${GPATH} CFLAGS="-O3" && \
+    ./configure --prefix=${GPATH} CFLAGS="-O3 -Dstat64=stat -Wno-implicit-function-declaration" && \
     make && make install && make clean
 RUN rm gmap-gsnap-${GVER}.tar.gz
 
@@ -72,7 +72,7 @@ RUN wget -qO gmap_build.sh https://raw.githubusercontent.com/eead-csic-compbio/b
 RUN wget -qO build_imputation_index.sh https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/build_imputation_index.sh
 RUN wget -qO imputation.pl https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/imputation.pl
 RUN wget -qO setup_graph.pl https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/setup_graph.pl
-RUN wget -q0 https://github.com/eead-csic-compbio/barleygraph/blob/main/graphs/Pan20-mmap-pro.yaml
+RUN wget -qO Pan20-mmap-pro.yaml https://github.com/eead-csic-compbio/barleygraph/blob/main/graphs/Pan20-mmap-pro.yaml
 
 # Ensure correct conda paths for anaconda/miniconda image are fully exposed globally
 ENV PATH="/opt/miniconda3/bin:/opt/miniconda3/envs/phgv2.4/bin:${PATH}"
@@ -96,7 +96,7 @@ RUN chmod +x gmap_build.sh build_imputation_index.sh imputation.pl setup_graph.p
 # Remove .sh extensions from shell scripts and rename setup_databases.sh to setup_database
 RUN mv build_imputation_index.sh build_imputation_index && \
     mv imputation.pl imputation && \
-    mv setup_graph.sh setup_graph
+    mv setup_graph.pl setup_graph
 
 # Create wrapper scripts that safely invoke the conda environment via conda run
 RUN echo '#!/bin/bash' > /barleygraph/haplopainting && \
