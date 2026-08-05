@@ -91,7 +91,7 @@ if(defined($opts{'G'})) {
     }
   }
 
-  $cmd = "tar xkvfz $tgzfile -C $path";
+  $cmd = "tar xvfz $tgzfile -C $path";
   run_cmd($cmd, "# 3 Unpacking graph ..."); 
 
   # last operations on unpacked data
