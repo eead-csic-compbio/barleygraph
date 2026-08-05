@@ -52,6 +52,13 @@ if(defined($opts{'G'})) {
     die "# ERROR: unsupported graph ($graph), please run $0 -l to see available graphs\n"; 
   }	  
 
+  # check whether this graph is already setup or needs to be downloaded
+  $path = "$target_path/$graphs{'Pan20-mmap-pro'}{'subfolder'}";
+  if(-d "$path/$graph") {
+    print "# Previous setup complete ($path/$graph) \n";
+    exit(0);    
+  } 
+  
   if(!-e $tgzfile) {
 
     # expand list of URLS for all parts
@@ -84,7 +91,7 @@ if(defined($opts{'G'})) {
     }
   }
 
-  $path = "$target_path/$graphs{'Pan20-mmap-pro'}{'subfolder'}";
+  # unpack in path
   if(!-d $path) {
     if(!mkdir($path)) {
       die "# ERROR: cannot create folder $path , check $target_path exists or permissions\n";
@@ -100,7 +107,7 @@ if(defined($opts{'G'})) {
   mkdir("$path/$graph/vcf_dbs");
   symlink("$path/assemblies.agc", "$path/$graph/vcf_dbs/assemblies.agc");
 
-  print "# Setup complete ($graph)\n";
+  print "# Setup complete ($path/$graph)\n";
 }
 
 exit(0);
