@@ -5,7 +5,8 @@ use Getopt::Std;
 use Cwd 'abs_path';
 
 # Download, unpack and setup graphs to be used in Docker container.
-# Uses the following system's binaries: cat, wget, md5sum
+# Creates/updates a config file describing locally available graphs.
+# Uses the following Linux system binaries: cat, wget, md5sum
 #
 # J Sarria, B Contreras-Moreira
 # Copyright [2026] Estacion Experimental de Aula Dei-CSIC
@@ -19,8 +20,9 @@ $graphs{'Pan20-mmap-pro'}{'URL'} =
 $graphs{'Pan20-mmap-pro'}{'last'} = 12;
 $graphs{'Pan20-mmap-pro'}{'md5sum'} = '10b88c32b8cd01dfc214487ed1fe7cae';
 
-# should match Docker location
+# should match Docker
 my $target_path = abs_path('/graph_db');
+my $graph_list_file = $target_path . '/graph_list.tsv';
 
 my ($graph,$tgzfile,$part,$partfile,$url,$cmd,$sum,$path);
 my (%opts,@temp);
@@ -101,11 +103,21 @@ if(defined($opts{'G'})) {
   $cmd = "tar xvfz $tgzfile -C $path";
   run_cmd($cmd, "# 3 Unpacking graph ..."); 
 
-  # last operations on unpacked data
-  
+  # add this graph to config list
+  if(-e $graph_list_file) {
+    open(LIST,">>",$graph_list_file) ||
+      die "# ERROR: cannot read $graph_list_file\n";
+  } else {
+    open(LIST,">",$graph_list_file) ||
+      die "# ERROR: cannot create $graph_list_file\n";
+  }
+  print LIST "$graphs{'Pan20-mmap-pro'}{'subfolder'}\t$graph\t" .
+    "$graphs{$graph}{'URL'}\t$graphs{'Pan20-mmap-pro'}{'last'}\t$graphs{'Pan20-mmap-pro'}{'md5sum'}\n";
+  close(LIST);  
+
   # required by create-fasta-from-hvcf (imputation -g)
-  mkdir("$path/$graph/vcf_dbs");
-  symlink("$path/assemblies.agc", "$path/$graph/vcf_dbs/assemblies.agc");
+  #mkdir("$path/$graph/vcf_dbs");
+  #symlink("$path/assemblies.agc", "$path/$graph/vcf_dbs/assemblies.agc");
 
   print "# Setup complete ($path/$graph)\n";
 }
