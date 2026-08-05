@@ -8,13 +8,15 @@ LABEL org.opencontainers.image.source="https://github.com/eead-csic-compbio/barl
 
 USER root
 
-# Bound in runtime to writable local dir. Persistent storage of GMAP db files.
+# Bound in runtime to writable local dir. Persistent storage of GMAP index files.
 # Required by align2graph only, can be left unset for imputation jobs.
 VOLUME /gmap_db
 
-# Bound in runtime to writable local dir. Persistent storage of PHG graph files 
-# and possibly results.
+# Bound in runtime to writable local dir. Persistent storage of PHG graph files.
 VOLUME /graph_db
+
+# Bound in runtime to writable local dir. Persistent storage of results.
+VOLUME /results
 
 RUN mkdir /barleygraph
 WORKDIR /barleygraph
@@ -69,7 +71,7 @@ RUN mv align2graph.py align2graph
 
 # scripts and config files from GitHub repository
 RUN wget -qO gmap_build.sh https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/gmap_build.sh
-RUN wget -qO build_imputation_index.sh https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/build_imputation_index.sh
+#RUN wget -qO build_imputation_index.sh https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/build_imputation_index.sh
 RUN wget -qO imputation.pl https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/imputation.pl
 RUN wget -qO setup_graph.pl https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/setup_graph.pl
 RUN wget -qO Pan20-mmap-pro.yaml https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/refs/heads/main/graphs/Pan20-mmap-pro.yaml
@@ -94,9 +96,9 @@ ENV XDG_CACHE_HOME=/tmp/xdg_cache
 RUN chmod +x gmap_build.sh build_imputation_index.sh imputation.pl setup_graph.pl
 
 # Remove .sh extensions from shell scripts and rename setup_databases.sh to setup_database
-RUN mv build_imputation_index.sh build_imputation_index && \
-    mv imputation.pl imputation && \
-    mv setup_graph.pl setup_graph
+RUN mv imputation.pl imputation && \
+    mv setup_graph.pl setup_graph #&& \
+    #mv build_imputation_index.sh build_imputation_index 
 
 # Create wrapper scripts that safely invoke the conda environment via conda run
 RUN echo '#!/bin/bash' > /barleygraph/haplopainting && \
@@ -111,3 +113,4 @@ RUN echo '#!/bin/bash' > /barleygraph/hvcf2bed && \
 RUN rm -rf /opt/miniconda3/pkgs/*
 
 ENV PATH="/barleygraph:${GPATH}/bin:${PHGPATH}:${PATH}"
+SHELL ["conda", "run", "--no-capture-output", "-n", "phgv2.4", "/bin/bash", "-c"]
