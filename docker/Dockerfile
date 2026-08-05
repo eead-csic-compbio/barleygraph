@@ -72,7 +72,7 @@ RUN wget -qO gmap_build.sh https://raw.githubusercontent.com/eead-csic-compbio/b
 RUN wget -qO build_imputation_index.sh https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/build_imputation_index.sh
 RUN wget -qO imputation.pl https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/imputation.pl
 RUN wget -qO setup_graph.pl https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/setup_graph.pl
-RUN wget -qO Pan20-mmap-pro.yaml https://github.com/eead-csic-compbio/barleygraph/blob/main/graphs/Pan20-mmap-pro.yaml
+RUN wget -qO Pan20-mmap-pro.yaml https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/refs/heads/main/graphs/Pan20-mmap-pro.yaml
 
 # Ensure correct conda paths for anaconda/miniconda image are fully exposed globally
 ENV PATH="/opt/miniconda3/bin:/opt/miniconda3/envs/phgv2.4/bin:${PATH}"
