@@ -20,7 +20,7 @@ $graphs{'Pan20-mmap-pro'}{'last'} = 12;
 $graphs{'Pan20-mmap-pro'}{'md5sum'} = '10b88c32b8cd01dfc214487ed1fe7cae';
 
 # should match Docker
-my $target_path = abs_path('test/'); #'/barleygraph_databases/';
+my $target_path = abs_path('graph_db/');
 
 my ($graph,$tgzfile,$part,$partfile,$url,$cmd,$sum,$path);
 my (%opts,@temp);
