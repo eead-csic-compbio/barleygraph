@@ -74,7 +74,6 @@ RUN wget -qO gmap_build.sh https://raw.githubusercontent.com/eead-csic-compbio/b
 #RUN wget -qO build_imputation_index.sh https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/build_imputation_index.sh
 RUN wget -qO imputation.pl https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/imputation.pl
 RUN wget -qO setup_graph.pl https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/setup_graph.pl
-RUN wget -qO Pan20-mmap-pro.yaml https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/refs/heads/main/graphs/Pan20-mmap-pro.yaml
 
 # Ensure correct conda paths for anaconda/miniconda image are fully exposed globally
 ENV PATH="/opt/miniconda3/bin:/opt/miniconda3/envs/phgv2.4/bin:${PATH}"
@@ -113,4 +112,4 @@ RUN echo '#!/bin/bash' > /barleygraph/hvcf2bed && \
 RUN rm -rf /opt/miniconda3/pkgs/*
 
 ENV PATH="/barleygraph:${GPATH}/bin:${PHGPATH}:${PATH}"
-SHELL ["conda", "run", "--no-capture-output", "-n", "phgv2.4", "/bin/bash", "-c"]
+#SHELL ["conda", "run", "--no-capture-output", "-n", "phgv2.4", "/bin/bash", "-c"]
