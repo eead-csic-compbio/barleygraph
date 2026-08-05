@@ -3,7 +3,6 @@ use strict;
 use warnings;
 use Getopt::Std;
 use File::Basename qw/ fileparse /; 
-use FindBin '$Bin';
 
 # Map reads in FASTQ file(s) on indexed PHG pangenome graph in order to imputate and call
 # haplotypes across graph ranges. By default produces hVCF output.
@@ -22,7 +21,7 @@ use FindBin '$Bin';
 my ($cmd,$root,$key,$val,$cfile,%opts,%config,@temp);
 my ($fqfiles,$output_file,$dogVCF,$redo,$allsites) = ('', '', 0, 0, 0);
 my ($threads,$chunksize,$minmatch,$outdir) = (5, 500, 101, '/tmp');
-my $graph_db = "/home/contrera/graph_db"; #"/graph_db";
+my $graph_db = "/graph_db";
 my $graph_list_file = $graph_db . '/graph_list.tsv';
 
 my $agcEXE      = 'agc';
