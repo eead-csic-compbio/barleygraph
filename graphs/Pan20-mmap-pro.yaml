@@ -1,10 +1,21 @@
-# Pan20 mmap_pro
+## Pan20-mmap-pro
+#
+#align2graph
 reference_name: MorexV3
 agc_assemblies: /graph_db/Pan20/assemblies.agc
+# contains both h.bed [a2g] & h.vcf.gz [imp] files
 hvcf_bed: /graph_db/Pan20/Pan20-mmap-pro/
 gmap_db: /gmap_db
 hapIDtable: /graph_db/Pan20/Pan20-mmap-pro/hapIDtable.tsv
-hapIDranges: graph_db/Pan20/Pan20-mmap-pro/hapIDranges.tsv
+hapIDranges: /graph_db/Pan20/Pan20-mmap-pro/hapIDranges.tsv
 gmap_exe: /barleygraph/gmap-2013-08-31/local/bin/gmap
 # synonyms of chr names to match those in barleymap
 chr_syns: { chr1H: chr1H_LR890096.1, chr2H: chr2H_LR890097.1, chr3H: chr3H_LR890098.1, chr4H: chr4H_LR890099.1, chr5H: chr5H_LR890100.1, chr6H: chr6H_LR890101.1, chr7H: chr7H_LR890102.1 }
+#
+#imputation
+reference_fasta: /graph_db/Pan20/Pan20-mmap-pro/MorexV3.fa
+range_bed: /graph_db/Pan20/ref_ranges.bed
+# must have also fmd.ssa & fmd.len.gz
+kmer_index: /graph_db/Pan20/Pan20-mmap-pro/Pan20-mmap-pro.fmd
+# must have TileDB gvcf_ & hvcf_dataset, required by imputation -g
+db-path: /graph_db/Pan20/Pan20-mmap-pro/vcf_dbs/ 
