@@ -20,8 +20,9 @@ $graphs{'Pan20-mmap-pro'}{'URL'} =
 $graphs{'Pan20-mmap-pro'}{'last'} = 12;
 $graphs{'Pan20-mmap-pro'}{'md5sum'} = '10b88c32b8cd01dfc214487ed1fe7cae';
 
-# should match Docker
-my $target_path = abs_path('/graph_db');
+my $graph_config_master_url = 'https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/refs/heads/main/graphs/';
+
+my $target_path = abs_path('/graph_db'); # should match Docker
 my $graph_list_file = $target_path . '/graph_list.tsv';
 
 my ($graph,$tgzfile,$part,$partfile,$url,$cmd,$sum,$path);
@@ -103,6 +104,10 @@ if(defined($opts{'G'})) {
   $cmd = "tar xvfz $tgzfile -C $path";
   run_cmd($cmd, "# 3 Unpacking graph ..."); 
 
+  # download graph config yaml file
+  $cmd = "wget -qO $path/$graph/$graph.yaml -c $graph_config_master_url.$graph.yaml";
+  run_cmd($cmd, "# 4 Downloading $graph.yaml");
+
   # add this graph to config list
   if(-e $graph_list_file) {
     open(LIST,">>",$graph_list_file) ||
@@ -112,7 +117,8 @@ if(defined($opts{'G'})) {
       die "# ERROR: cannot create $graph_list_file\n";
   }
   print LIST "$graphs{'Pan20-mmap-pro'}{'subfolder'}\t$graph\t" .
-    "$graphs{$graph}{'URL'}\t$graphs{'Pan20-mmap-pro'}{'last'}\t$graphs{'Pan20-mmap-pro'}{'md5sum'}\n";
+    "$graphs{$graph}{'URL'}\t$graphs{'Pan20-mmap-pro'}{'last'}\t" .
+    "$graphs{'Pan20-mmap-pro'}{'md5sum'}\n";
   close(LIST);  
 
   # required by create-fasta-from-hvcf (imputation -g)
