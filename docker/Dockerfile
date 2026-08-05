@@ -108,6 +108,6 @@ RUN echo '#!/bin/bash' > /barleygraph/hvcf2bed && \
     chmod +x /barleygraph/hvcf2bed
 
 # Clean up conda package cache to reduce image size
-#RUN rm -rf /opt/miniconda3/pkgs/*
+RUN rm -rf /opt/miniconda3/pkgs/*
 
 ENV PATH="/barleygraph:${GPATH}/bin:${PHGPATH}:${PATH}"
