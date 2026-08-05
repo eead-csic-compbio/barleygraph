@@ -3,21 +3,24 @@ use strict;
 use warnings;
 use Getopt::Std;
 
-# Download, unpack and setup graph to be used in Docker container
+# Download, unpack and setup graphs to be used in Docker container.
+# Uses the following system's binaries: cat, wget, md5sum
 #
 # J Sarria, B Contreras-Moreira
 # Copyright [2026] Estacion Experimental de Aula Dei-CSIC
 
-# To add a new graph in the future, simply add a line with this format:
-# 'GRAPHNAME' => 'WGET PATTERN'
-my %graphs = (
-  'Pan20-mmap-pro' =>  
-    'https://github.com/eead-csic-compbio/barleygraph/releases/download/Pan20-mmap-pro-1.0/Pan20-mmap-pro{00..12}.part',
-);
+# Due to their large size, graphs are split in parts; to add new graphs you need:
+# 1) URL of the first part (00), 2) natural of the last part, 3) md5sum of joined parts
+my %graphs;
+$graphs{'Pan20-mmap-pro'}{'URL'} = 
+  'https://github.com/eead-csic-compbio/barleygraph/releases/download/Pan20-mmap-pro-1.0/Pan20-mmap-pro00.part';
+$graphs{'Pan20-mmap-pro'}{'last'} = 12;
+$graphs{'Pan20-mmap-pro'}{'md5sum'} = '10b88c32b8cd01dfc214487ed1fe7cae';
 
 my $target_path = '/barleygraph_databases/';
 
-my ($graph,$tgzfile,$partial_file_pat,$cmd,%opts,@temp);
+my ($graph,$tgzfile,$part,$partfile,$url,$cmd,$sum);
+my (%opts,@temp);
 
 getopts('hlG:', \%opts);
 
@@ -32,7 +35,7 @@ if(($opts{'h'})||(scalar(keys(%opts))==0)) {
 
 if(defined($opts{'l'})) {
   foreach $graph (sort keys(%graphs)) {
-    print "$graph => $graphs{$graph}\n";
+    print "$graph => $graphs{$graph}{'wgetpat'}\n";
   }
   exit(0);
 }
@@ -45,28 +48,53 @@ if(defined($opts{'G'})) {
   if(!defined($graphs{$graph})) {
     die "# ERROR: unsupported graph ($graph), please run $0 -l to see available graphs\n"; 
   }	  
-  
-  if(-e $tgzfile) { 
-    $cmd = "wget $graphs{$graph}";
-    run_cmd($cmd, "# 1 Downloading graph parts ...");
-    @temp  = glob("$graph.part");
 
-    $cmd = "cat $graph* > $tgzfile && md5sum $tgzfile";
+  if(!-e $tgzfile) {
+
+    # expand list of URLS for all parts
+    foreach $part (0 .. $graphs{$graph}{'last'}) {
+      $url = $graphs{$graph}{'URL'};
+      if(length($part) == 1) {
+        $url =~ s/00.part/0$part.part/
+      } else {
+        $url =~ s/00.part/$part.part/
+      } 
+      $partfile = (split(/\//,$url))[-1];
+      push(@temp, $partfile);
+  
+      $cmd = "wget -q -c $url";
+      run_cmd($cmd, "# 1 Downloading $url");
+    }
+  
+    $cmd = "cat $graph*.part > $tgzfile";
     run_cmd($cmd, "# 2 Joining graph parts ...");
+
+    print "# 3 Checking download sum ...\n";
+    $sum = `md5sum $tgzfile`;
+    if($sum =~ /$graphs{$graph}{'md5sum'}/) {
+       unlink(@temp);
+       print "# Download correct\n";	    
+    } else {
+      push(@temp, $tgzfile);
+      unlink(@temp);
+      die "# Download failed, incorrect checksum, please re-try\n";
+    }
   }
 
-  $cmd = "tar xvfz $tgzfile -C $target_path";
-  run_cmd($cmd, "# 3 Unpacking graph ..."); 
-  #push(@temp, $tgzfile);
+  if(-d $target_path) {
+    $cmd = "tar xvfz $tgzfile -C $target_path";
+    run_cmd($cmd, "# 3 Unpacking graph ..."); 
 
-  print "# Setup complete for $graph\n";
-  # clean only if successful
-  unlink(@temp);
+    print "# Setup complete ($graph)\n";
+  
+    push(@temp, $tgzfile);
+    unlink(@temp);
+  } else {
+    die "# ERROR: target folder does not exist ($target_path)\n"; 
+  }
 }
 
 exit(0);
-
-
 
 
 sub run_cmd {
@@ -78,27 +106,6 @@ sub run_cmd {
       die "# EXIT: command failed ($cmd)\n";
   }
 }
-
-#PARENT_DIR="$DATABASE_ROOT/$PANGENOME_NAME"
-#TAR_FILE="$DATABASE_ROOT/${DATASET_NAME}.tgz"
-#EXTRACT_DIR="$PARENT_DIR/$DATASET_NAME"
-
-#echo "Using Database Root: $DATABASE_ROOT"
-
-# Create the parent directory if it doesn't exist
-#if ! mkdir -p "$PARENT_DIR" 2>/dev/null; then
-#    echo "ERROR: Failed to create directory $PARENT_DIR."
-#    echo "Do you have write permissions? You may need to run this script with 'sudo'."
-#    exit 1
-#fi
-
-#  mkdir -p "$EXTRACT_DIR"
-  
-#  # Extract directly into the temporary folder
-#  if ! tar -xzf "$TAR_FILE" -C "$EXTRACT_DIR"; then
-#    echo "ERROR: Failed to extract ${DATASET_NAME}.tgz."
-#    exit 1
-#  fi
 
 #  # Merge contents into the parent folder (skipping existing/duplicate files)
 #  echo "Merging contents into shared $PANGENOME_NAME folder (skipping duplicate files)..."
