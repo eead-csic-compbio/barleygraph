@@ -91,7 +91,7 @@ if(defined($opts{'G'})) {
     }
   }
 
-  $cmd = "tar xvfz $tgzfile -C $path";
+  $cmd = "tar xkvfz $tgzfile -C $path";
   run_cmd($cmd, "# 3 Unpacking graph ..."); 
 
   # last operations on unpacked data
@@ -115,12 +115,3 @@ sub run_cmd {
       die "# EXIT: command failed ($cmd)\n";
   }
 }
-
-#  # Merge contents into the parent folder (skipping existing/duplicate files)
-#  echo "Merging contents into shared $PANGENOME_NAME folder (skipping duplicate files)..."
-  
-#  # cp -rn recursively merges folders and copies files without overwriting.
-#  cp -rn "$EXTRACT_DIR"/* "$PARENT_DIR"/ 2>/dev/null || true
-  
-  # Remove the temporary folder
-  #  rm -rf "$EXTRACT_DIR"
