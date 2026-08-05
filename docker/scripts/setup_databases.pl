@@ -2,6 +2,7 @@
 use strict;
 use warnings;
 use Getopt::Std;
+use Cwd 'abs_path';
 
 # Download, unpack and setup graphs to be used in Docker container.
 # Uses the following system's binaries: cat, wget, md5sum
@@ -12,14 +13,16 @@ use Getopt::Std;
 # Due to their large size, graphs are split in parts; to add new graphs you need:
 # 1) URL of the first part (00), 2) natural of the last part, 3) md5sum of joined parts
 my %graphs;
+$graphs{'Pan20-mmap-pro'}{'subfolder'} = 'Pan20';
 $graphs{'Pan20-mmap-pro'}{'URL'} = 
   'https://github.com/eead-csic-compbio/barleygraph/releases/download/Pan20-mmap-pro-1.0/Pan20-mmap-pro00.part';
 $graphs{'Pan20-mmap-pro'}{'last'} = 12;
 $graphs{'Pan20-mmap-pro'}{'md5sum'} = '10b88c32b8cd01dfc214487ed1fe7cae';
 
-my $target_path = '/barleygraph_databases/';
+# should match Docker
+my $target_path = abs_path('test/'); #'/barleygraph_databases/';
 
-my ($graph,$tgzfile,$part,$partfile,$url,$cmd,$sum);
+my ($graph,$tgzfile,$part,$partfile,$url,$cmd,$sum,$path);
 my (%opts,@temp);
 
 getopts('hlG:', \%opts);
@@ -81,17 +84,23 @@ if(defined($opts{'G'})) {
     }
   }
 
-  if(-d $target_path) {
-    $cmd = "tar xvfz $tgzfile -C $target_path";
-    run_cmd($cmd, "# 3 Unpacking graph ..."); 
-
-    print "# Setup complete ($graph)\n";
-  
-    push(@temp, $tgzfile);
-    unlink(@temp);
-  } else {
-    die "# ERROR: target folder does not exist ($target_path)\n"; 
+  $path = "$target_path/$graphs{'Pan20-mmap-pro'}{'subfolder'}";
+  if(!-d $path) {
+    if(!mkdir($path)) {
+      die "# ERROR: cannot create folder $path , check $target_path exists or permissions\n";
+    }
   }
+
+  $cmd = "tar xvfz $tgzfile -C $path";
+  run_cmd($cmd, "# 3 Unpacking graph ..."); 
+
+  # last operations on unpacked data
+  
+  # required by create-fasta-from-hvcf (imputation -g)
+  mkdir("$path/$graph/vcf_dbs");
+  symlink("$path/assemblies.agc", "$path/$graph/vcf_dbs/assemblies.agc");
+
+  print "# Setup complete ($graph)\n";
 }
 
 exit(0);
