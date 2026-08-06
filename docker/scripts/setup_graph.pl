@@ -21,7 +21,7 @@ $graphs{'Pan20-mmap-pro'}{'URL'} =
 $graphs{'Pan20-mmap-pro'}{'last'} = 13;
 $graphs{'Pan20-mmap-pro'}{'md5sum'} = '268a3ce14ebf250bc56b267557e24e49';
 
-my $graph_config_master_url = 'https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/refs/heads/main/graphs/';
+my $graph_master_url = 'https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/refs/heads/main/graphs/';
 
 my $target_path = abs_path('/graph_db'); # should match Docker
 my $graph_list_file = $target_path . '/graph_list.tsv';
@@ -113,9 +113,9 @@ if(defined($opts{'G'})) {
   run_cmd($cmd, "# 3 Unpacking graph ..."); 
 
   # download graph config yaml & samplelist files
-  $cmd = "wget -qO $path/$graph/$graph.yaml -c $graph_config_master_url$graph.yaml";
+  $cmd = "wget -qO $path/$graph/$graph.yaml -c $graph_master_url$graph.yaml";
   run_cmd($cmd, "# 4.1 Downloading $graph.yaml");
-  $cmd = "wget -qO $path/$graph/$graph\_samplelist.tsv -c $graph_config_master_url$path\_samplelist.tsv";
+  $cmd = "wget -qO $path/$graph/$graph\_samplelist.tsv -c $graph_master_url$path\_samplelist.tsv";
   run_cmd($cmd, "# 4.2 Downloading $graph\_samplelist.tsv");
   
   # add this graph to config list
