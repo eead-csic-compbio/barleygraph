@@ -250,7 +250,7 @@ my $imput_samplelist = "$vcfdir/$subfolder\_samplelist.tsv";
 $cmd = "cp $graph_samplelist $imput_samplelist";
 run_cmd($cmd);
 
-my $next_int = `perl -lne 'END{print $.}' $graph_samplelist`;
+my $next_int = `perl -lne "END{print \$.}" $graph_samplelist`;
 
 open(SAMPLELIST,">>",$imput_samplelist) ||
   die "# ERROR: cannot open $imput_samplelist\n";
