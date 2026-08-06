@@ -18,5 +18,5 @@ reference_fasta: /graph_db/Pan20/Pan20-mmap-pro/MorexV3.fa
 range_bed: /graph_db/Pan20/ref_ranges.bed
 # must have also fmd.ssa & fmd.len.gz
 kmer_index: /graph_db/Pan20/Pan20-mmap-pro/Pan20-mmap-pro.fmd
-# must have TileDB gvcf_ & hvcf_dataset, required by imputation -g
-db_path: /graph_db/Pan20/Pan20-mmap-pro/vcf_dbs/ 
+#must have TileDB gvcf_ & hvcf_dataset, required by imputation -g
+#db_path: /graph_db/Pan20/Pan20-mmap-pro/vcf_dbs/ 
