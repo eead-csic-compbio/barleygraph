@@ -115,9 +115,9 @@ if(defined($opts{'G'})) {
   # download graph config yaml & samplelist files
   $cmd = "wget -qO $path/$graph/$graph.yaml -c $graph_config_master_url$graph.yaml";
   run_cmd($cmd, "# 4.1 Downloading $graph.yaml");
-  $cmd = "wget -qO $path/$graph/$graph\_samplelist.tsv -c $graph_config_master_url$graph\_samplelist.tsv";
+  $cmd = "wget -qO $path/$graph/$graph\_samplelist.tsv -c $graph_config_master_url$path\_samplelist.tsv";
   run_cmd($cmd, "# 4.2 Downloading $graph\_samplelist.tsv");
-
+  
   # add this graph to config list
   if(-e $graph_list_file) {
     open(LIST,">>",$graph_list_file) ||
