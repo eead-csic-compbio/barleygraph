@@ -3,10 +3,11 @@ use strict;
 use warnings;
 use Getopt::Std;
 use File::Basename qw/ fileparse /; 
+use File::Copy;
 
 # Map reads in FASTQ file(s) on indexed PHG pangenome graph in order to imputate and call
-# haplotypes across graph ranges. By default produces hVCF output.
-# Uses the following Linux system binaries: find, sort
+# haplotypes across graph ranges, producing hVCF output. Creates also a folder with VCF files
+# for downstream haplotype painting jobs.
 #
 # J Sarria, B Contreras-Moreira
 # Copyright [2026] Estacion Experimental de Aula Dei-CSIC
@@ -18,7 +19,8 @@ use File::Basename qw/ fileparse /;
 # NOTE: heterozygous sites are explicitely excluded from output VCF as might be artificially 
 # introduced by chunks aligning to same reference regions.
 
-my ($cmd,$root,$key,$val,$cfile,%opts,%config,@temp);
+my ($cmd,$root,$key,$val,$cfile,$subfolder,$path);
+my (%opts,%config,@temp);
 my ($fqfiles,$output_file,$dogVCF,$redo,$allsites) = ('', '', 0, 0, 0);
 my ($threads,$chunksize,$minmatch,$outdir) = (5, 500, 101, '/tmp');
 my $graph_db = "/graph_db";
@@ -33,7 +35,7 @@ my $agcEXE      = 'agc';
 getopts('hlARgB:1:2:G:c:o:m:t:k:', \%opts);
 
 if(($opts{'h'})||(scalar(keys(%opts))==0)) {
-  print "Maps reads in FASTQ file to imputate and call haplotypes from graph.\n\n";
+  print "Maps reads in FASTQ file to imputate and call haplotypes from graph, outputs hVCF.\n\n";
   print "Usage: $0 [options]\n\n";
   print "-h this message\n";
   print "-1 input FASTQ file                                (example: -1 sample1.fq.gz)\n";
@@ -80,9 +82,11 @@ if(defined($opts{'G'})) {
   open(LIST,"<",$graph_list_file) ||
       die "# ERROR: no supported graphs ($graph_list_file), run setup_graph first\n";
   while(<LIST>) {
-    @temp = split;
-    if($temp[1] eq $opts{'G'}) {
-      $cfile = "$graph_db/$temp[0]/$temp[1]/$temp[1].yaml";
+    my @tsv = split;
+    if($tsv[1] eq $opts{'G'}) {
+      $subfolder = $tsv[0];	    
+      $path = "$graph_db/$subfolder";	
+      $cfile = "$path/$tsv[1]/$tsv[1].yaml";
       last;
     }
   }
@@ -220,6 +224,40 @@ if($redo == 1 || !-e $hvcf_file) {
 } else {
   print "# 2 re-using $hvcf_file\n";
 }
+
+## create folder with graph + imputed sample h.vcf & sample list files for downstream use
+my $vcfdir = "$outdir/$root" . '_1.hvcfdir/';
+if(!mkdir($vcfdir)) {
+  die "# ERROR: cannot create $vcfdir\n";
+} else {
+  print "# Creating results folder for downstream use ...\n";
+}
+
+# sample
+symlink($output_file, $vcfdir.$output_file);
+
+# now graph genomes
+opendir(HVCF,$config{'hvcf_bed'}) ||
+  die "# ERROR: cannot list $config{'hvcf_bed'}\n";
+foreach my $vcf (grep {/\.h\.vcf\.gz$/} readdir(HVCF)) {
+  symlink($config{'hvcf_bed'}.$vcf, $vcfdir.$vcf);
+}
+closedir(HVCF);
+
+# finally add extended sample list file
+my $graph_samplelist = "$path/$subfolder\_samplelist.tsv";
+my $imput_samplelist = "$vcfdir/$subfolder\_samplelist.tsv";
+$cmd = "cp $graph_samplelist $imput_samplelist";
+run_cmd($cmd);
+
+my $next_int = `perl -lne 'END{print $.}' $graph_samplelist`;
+
+open(SAMPLELIST,">>",$imput_samplelist) ||
+  die "# ERROR: cannot open $imput_samplelist\n";
+print SAMPLELIST "$next_int\t$root\_1\tImputed\n";
+close(SAMPLELIST);  
+
+print "# output hvcf folder: $vcfdir\n\n";
 
 if($dogVCF == 0) {
   print "## output: $output_file\n";
