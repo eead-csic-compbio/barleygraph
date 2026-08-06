@@ -142,6 +142,8 @@ if(defined($opts{'G'})) {
     run_cmd($cmd, "# Computing GMAP indices, will take some time ...");
   }
 
+  chmod(0777,$path);
+
   print "# Setup complete ($path/$graph)\n";
 }
 
