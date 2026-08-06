@@ -1,5 +1,6 @@
 ## Pan20-mmap-pro
 #
+genomes: /graph_db/Pan20/genomes.txt
 #align2graph
 reference_name: MorexV3
 agc_assemblies: /graph_db/Pan20/assemblies.agc
