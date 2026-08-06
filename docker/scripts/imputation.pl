@@ -191,7 +191,7 @@ my $hvcf_file = "$outdir/$root" . '_1.h.vcf';
 push(@temp, $mapfile);
 if($redo == 1 || !-e $hvcf_file) {
   $cmd = "phg map-reads --index $config{'kmer_index'} --read-files $fqfiles -o $outdir " .
-    "--hvcf_bed $config{'hvcf_bed'} --threads $threads --min-mem-length $minmatch "; 
+    "--hvcf-dir $config{'hvcf_bed'} --threads $threads --min-mem-length $minmatch "; 
   run_cmd($cmd, "# 1 Running phg map-reads ...");
 
 } else {
@@ -212,7 +212,7 @@ if($redo == 1 || !-e $hvcf_file) {
     die "# ERROR: cannot find $config{'agc_assemblies'}, please fix $cfile\n";
   }	  
 
-  $cmd = "phg find-paths --read-files $mapfile --output-dir $outdir --hvcf_bed $config{'hvcf_bed'} " .
+  $cmd = "phg find-paths --read-files $mapfile --output-dir $outdir --hvcf-dir $config{'hvcf_bed'} " .
     "--path-type haploid --threads $threads --reference-genome $config{'reference_fasta'}";
   run_cmd($cmd, "# 2 Running phg find-paths ...");
 
