@@ -59,7 +59,7 @@ if(defined($opts{'G'})) {
 
   # check whether this graph is already setup or needs to be downloaded
   $path = "$target_path/$graphs{'Pan20-mmap-pro'}{'subfolder'}";
-  if(-d "$path/$graph") {
+  if(-e "$path/$graph/$graph.yaml") {
     print "# Previous setup complete ($path/$graph) \n";
  
     # check also GMAP indices
