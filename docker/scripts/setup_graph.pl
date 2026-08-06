@@ -113,7 +113,7 @@ if(defined($opts{'G'})) {
   run_cmd($cmd, "# 3 Unpacking graph ..."); 
 
   # download graph config yaml file
-  $cmd = "wget -qO $path/$graph/$graph.yaml -c $graph_config_master_url.$graph.yaml";
+  $cmd = "wget -qO $path/$graph/$graph.yaml -c $graph_config_master_url$graph.yaml";
   run_cmd($cmd, "# 4 Downloading $graph.yaml");
 
   # add this graph to config list
