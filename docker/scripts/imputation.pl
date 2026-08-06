@@ -228,7 +228,7 @@ if($redo == 1 || !-e $hvcf_file) {
 ## create folder with graph + imputed sample h.vcf & sample list files for downstream use
 my $vcfdir = "$outdir/$root" . '_1.hvcfdir/';
 if(!mkdir($vcfdir)) {
-  die "# ERROR: cannot create or won't overwrite $vcfdir, please remove it first\n";
+  die "# ERROR: cannot create or won't overwrite $vcfdir, please (re)move it\n";
 } else {
   print "# Creating results folder for downstream use ...\n";
 }
@@ -251,6 +251,7 @@ $cmd = "cp $graph_samplelist $imput_samplelist";
 run_cmd($cmd);
 
 my $next_int = `perl -lne "END{print \$.}" $graph_samplelist`;
+chomp $next_int;
 
 open(SAMPLELIST,">>",$imput_samplelist) ||
   die "# ERROR: cannot open $imput_samplelist\n";
