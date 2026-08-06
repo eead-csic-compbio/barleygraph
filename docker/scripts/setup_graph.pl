@@ -132,7 +132,7 @@ if(defined($opts{'G'})) {
 
   # optionally compute GMAP indices
   if($opts{'g'}) {
-    $cmd = "$Bin/gmap_build $path";
+    $cmd = "$Bin/gmap_index $path";
     run_cmd($cmd, "# Computing GMAP indices, will take some time ...");
   }
 
