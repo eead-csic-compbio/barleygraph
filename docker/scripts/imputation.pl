@@ -82,7 +82,7 @@ if(defined($opts{'G'})) {
   while(<LIST>) {
     @temp = split;
     if($temp[1] eq $opts{'G'}) {
-      $cfile = "$graph_db$temp[0]/$temp[1]/$temp[1].yaml";
+      $cfile = "$graph_db/$temp[0]/$temp[1]/$temp[1].yaml";
       last;
     }
   }
