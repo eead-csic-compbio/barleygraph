@@ -18,8 +18,8 @@ my %graphs;
 $graphs{'Pan20-mmap-pro'}{'subfolder'} = 'Pan20';
 $graphs{'Pan20-mmap-pro'}{'URL'} = 
   'https://github.com/eead-csic-compbio/barleygraph/releases/download/Pan20-mmap-pro-1.0/Pan20-mmap-pro00.part';
-$graphs{'Pan20-mmap-pro'}{'last'} = 12;
-$graphs{'Pan20-mmap-pro'}{'md5sum'} = '10b88c32b8cd01dfc214487ed1fe7cae';
+$graphs{'Pan20-mmap-pro'}{'last'} = 13;
+$graphs{'Pan20-mmap-pro'}{'md5sum'} = '268a3ce14ebf250bc56b267557e24e49';
 
 my $graph_config_master_url = 'https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/refs/heads/main/graphs/';
 
