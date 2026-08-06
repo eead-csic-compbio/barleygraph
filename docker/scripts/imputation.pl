@@ -104,7 +104,8 @@ while(<CONFIG>) {
   next if(/^#/);
   if(/([^:]+):\s+(\S+)/) {
     ($key,$val) = ($1, $2); 
-    if($key ne "reference_name" && $key ne "reference_fasta" &&	!-e $val) {
+    if($key ne "reference_name" && $key ne "reference_fasta" &&	
+      $key ne "chr_syns" && !-e $val) {
       die "# ERROR: bad value for '$key' in $opts{'c'}\n";
     } elsif($key eq 'kmer_index') {
       if(!-e $val.'.ssa') {
