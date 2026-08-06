@@ -67,11 +67,10 @@ RUN rm gmap-gsnap-${GVER}.tar.gz
 RUN wget https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/refs/heads/main/align2graph.py
 RUN wget https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/refs/heads/main/version.py
 RUN chmod +x align2graph.py
-RUN mv align2graph.py align2graph
 
 # scripts and config files from GitHub repository
 RUN wget -qO gmap_build.sh https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/gmap_build.sh
-#RUN wget -qO build_imputation_index.sh https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/build_imputation_index.sh
+RUN wget -qO build_imputation_index.sh https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/build_imputation_index.sh
 RUN wget -qO imputation.pl https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/imputation.pl
 RUN wget -qO setup_graph.pl https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/setup_graph.pl
 
@@ -96,10 +95,14 @@ RUN chmod +x gmap_build.sh build_imputation_index.sh imputation.pl setup_graph.p
 
 # Remove .sh extensions from shell scripts and rename setup_databases.sh to setup_database
 RUN mv imputation.pl imputation && \
-    mv setup_graph.pl setup_graph #&& \
-    #mv build_imputation_index.sh build_imputation_index 
+    mv setup_graph.pl setup_graph && \
+    mv build_imputation_index.sh build_imputation_index 
 
 # Create wrapper scripts that safely invoke the conda environment via conda run
+RUN echo '#!/bin/bash' > /barleygraph/align2graph && \
+    echo 'exec conda run -n phgv2.4 python3 "$@"' >> /barleygraph/align2graph && \
+    chmod +x /barleygraph/align2graph
+
 RUN echo '#!/bin/bash' > /barleygraph/haplopainting && \
     echo 'exec conda run -n phgv2.4 python3 -m phgtools.modules.haplopainting "$@"' >> /barleygraph/haplopainting && \
     chmod +x /barleygraph/haplopainting

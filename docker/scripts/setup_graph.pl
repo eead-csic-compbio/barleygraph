@@ -3,6 +3,7 @@ use strict;
 use warnings;
 use Getopt::Std;
 use Cwd 'abs_path';
+use FindBin '$Bin';
 
 # Download, unpack and setup graphs to be used in Docker container.
 # Creates/updates a config file describing locally available graphs.
@@ -28,13 +29,14 @@ my $graph_list_file = $target_path . '/graph_list.tsv';
 my ($graph,$tgzfile,$part,$partfile,$url,$cmd,$sum,$path);
 my (%opts,@temp);
 
-getopts('hlG:', \%opts);
+getopts('hglG:', \%opts);
 
 if(($opts{'h'})||(scalar(keys(%opts))==0)) {
   print "Usage: $0 [options]\n\n";
   print "-h this message\n";
   print "-l list available pangenome graphs          (optional)\n";
   print "-G graph name, should be in supported list  (required, example: -G Pan20-mmap-pro)\n";
+  print "-g compute GMAP indices                     (optional, required for align2graph)\n";
   #print "\nPrimary citation:\n";
   exit(0);
 }
@@ -121,9 +123,18 @@ if(defined($opts{'G'})) {
     "$graphs{'Pan20-mmap-pro'}{'md5sum'}\n";
   close(LIST);  
 
+  # required by gmap_build
+  mkdir("$path/data");
+
   # required by create-fasta-from-hvcf (imputation -g)
   #mkdir("$path/$graph/vcf_dbs");
   #symlink("$path/assemblies.agc", "$path/$graph/vcf_dbs/assemblies.agc");
+
+  # optionally compute GMAP indices
+  if($opts{'g'}) {
+    $cmd = "$Bin/gmap_build $path";
+    run_cmd($cmd, "# Computing GMAP indices, will take some time ...");
+  }
 
   print "# Setup complete ($path/$graph)\n";
 }
