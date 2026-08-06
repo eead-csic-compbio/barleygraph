@@ -187,8 +187,9 @@ if(!`which phg`) {
 
 # 1) map reads
 my $mapfile = "$outdir/$root" . '_1_readMapping.txt';
+my $keyfile = "$outdir/pathKeyFile.txt";
 my $hvcf_file = "$outdir/$root" . '_1.h.vcf';
-push(@temp, $mapfile);
+push(@temp, $mapfile, $keyfile);
 if($redo == 1 || !-e $hvcf_file) {
   $cmd = "phg map-reads --index $config{'kmer_index'} --read-files $fqfiles -o $outdir " .
     "--hvcf-dir $config{'hvcf_bed'} --threads $threads --min-mem-length $minmatch "; 
