@@ -26,7 +26,7 @@ my $graph_master_url = 'https://raw.githubusercontent.com/eead-csic-compbio/barl
 my $target_path = abs_path('/graph_db'); # should match Docker
 my $graph_list_file = $target_path . '/graph_list.tsv';
 
-my ($graph,$tgzfile,$part,$partfile,$url,$cmd,$sum,$path);
+my ($graph,$tgzfile,$part,$partfile,$url,$cmd,$sum,$path,$subfolder);
 my (%opts,@temp);
 
 getopts('hglG:', \%opts);
@@ -51,6 +51,7 @@ if(defined($opts{'l'})) {
 if(defined($opts{'G'})) {
 
   $graph = $opts{'G'};
+  $subfolder = $graphs{$graph}{'subfolder'};
   $tgzfile = "$target_path/$graph.tgz";
 
   if(!defined($graphs{$graph})) {
@@ -58,7 +59,7 @@ if(defined($opts{'G'})) {
   }	  
 
   # check whether this graph is already setup or needs to be downloaded
-  $path = "$target_path/$graphs{'Pan20-mmap-pro'}{'subfolder'}";
+  $path = "$target_path/$subfolder";
   if(-e "$path/$graph/$graph.yaml") {
     print "# Previous setup complete ($path/$graph) \n";
  
@@ -115,7 +116,7 @@ if(defined($opts{'G'})) {
   # download graph config yaml & samplelist files
   $cmd = "wget -qO $path/$graph/$graph.yaml -c $graph_master_url$graph.yaml";
   run_cmd($cmd, "# 4.1 Downloading $graph.yaml");
-  $cmd = "wget -qO $path/$graph/$graph\_samplelist.tsv -c $graph_master_url$path\_samplelist.tsv";
+  $cmd = "wget -qO $path/$graph/$subfolder\_samplelist.tsv -c $graph_master_url$subfolder\_samplelist.tsv";
   run_cmd($cmd, "# 4.2 Downloading $graph\_samplelist.tsv");
   
   # add this graph to config list
@@ -126,9 +127,8 @@ if(defined($opts{'G'})) {
     open(LIST,">",$graph_list_file) ||
       die "# ERROR: cannot create $graph_list_file\n";
   }
-  print LIST "$graphs{'Pan20-mmap-pro'}{'subfolder'}\t$graph\t" .
-    "$graphs{$graph}{'URL'}\t$graphs{'Pan20-mmap-pro'}{'last'}\t" .
-    "$graphs{'Pan20-mmap-pro'}{'md5sum'}\n";
+  print LIST "$subfolder\t$graph\t" .
+    "$graphs{$graph}{'URL'}\t$graphs{$graph}{'last'}\t$graphs{$graph}{'md5sum'}\n";
   close(LIST);  
 
   # required by gmap_build
