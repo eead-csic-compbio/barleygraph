@@ -116,7 +116,7 @@ if(defined($opts{'G'})) {
   # download graph config yaml & samplelist files
   $cmd = "wget -qO $path/$graph/$graph.yaml -c $graph_master_url$graph.yaml";
   run_cmd($cmd, "# 4.1 Downloading $graph.yaml");
-  $cmd = "wget -qO $path/$graph/$subfolder\_samplelist.tsv -c $graph_master_url$subfolder\_samplelist.tsv";
+  $cmd = "wget -qO $path/$subfolder\_samplelist.tsv -c $graph_master_url$subfolder\_samplelist.tsv";
   run_cmd($cmd, "# 4.2 Downloading $graph\_samplelist.tsv");
   
   # add this graph to config list
@@ -144,7 +144,9 @@ if(defined($opts{'G'})) {
     run_cmd($cmd, "# Computing GMAP indices, will take some time ...");
   }
 
-  chmod(0777,$path);
+  $cmd = "chmod -R 777 $path";
+  run_cmd($cmd, "# Changing graph permissions ...");
+
   unlink $tgzfile;
 
   print "# Setup complete ($path/$graph)\n";
