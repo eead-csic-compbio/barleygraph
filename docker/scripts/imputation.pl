@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 use Getopt::Std;
-use File::Basename qw/ fileparse /; 
+use File::Basename qw/ fileparse basename /; 
 use File::Copy;
 
 # Map reads in FASTQ file(s) on indexed PHG pangenome graph in order to imputate and call
@@ -169,7 +169,7 @@ if(defined($opts{'R'})) {
   $redo = 1
 }
 
-$output_file = "$outdir/$root" . ".$chunksize.vcf.gz";
+#$output_file = "$outdir/$root" . ".$chunksize.vcf.gz";
 if($dogVCF == 0) {
   $output_file = "$outdir/$root" . '_1.h.vcf';
 }
@@ -234,7 +234,7 @@ if(!mkdir($vcfdir)) {
 }
 
 # sample
-symlink($output_file, $vcfdir.$output_file);
+symlink($output_file, $vcfdir.basename($output_file));
 
 # now graph genomes
 opendir(HVCF,$config{'hvcf_bed'}) ||
