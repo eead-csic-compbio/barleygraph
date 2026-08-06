@@ -61,6 +61,12 @@ if(defined($opts{'G'})) {
   $path = "$target_path/$graphs{'Pan20-mmap-pro'}{'subfolder'}";
   if(-d "$path/$graph") {
     print "# Previous setup complete ($path/$graph) \n";
+ 
+    # check also GMAP indices
+    if($opts{'g'}) {
+      $cmd = "$Bin/gmap_index $path";
+      run_cmd($cmd, "# Computing GMAP indices, will take some time ...");
+    }
     exit(0);    
   } 
   
