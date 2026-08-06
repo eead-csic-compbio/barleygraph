@@ -51,7 +51,7 @@ if(defined($opts{'l'})) {
 if(defined($opts{'G'})) {
 
   $graph = $opts{'G'};
-  $tgzfile = "$graph.tgz";
+  $tgzfile = "$target_path/$graph.tgz";
 
   if(!defined($graphs{$graph})) {
     die "# ERROR: unsupported graph ($graph), please run $0 -l to see available graphs\n"; 
@@ -145,6 +145,7 @@ if(defined($opts{'G'})) {
   }
 
   chmod(0777,$path);
+  unlink $tgzfile;
 
   print "# Setup complete ($path/$graph)\n";
 }
