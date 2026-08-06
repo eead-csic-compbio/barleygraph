@@ -82,7 +82,7 @@ if(defined($opts{'G'})) {
   while(<LIST>) {
     @temp = split;
     if($temp[1] eq $opts{'G'}) {
-      $cfile = "$temp[0]/$temp[1]/$temp[1].yaml";
+      $cfile = "$graph_db$temp[0]/$temp[1]/$temp[1].yaml";
       last;
     }
   }
@@ -99,7 +99,7 @@ if(defined($opts{'G'})) {
 
 # actually read config file
 open(CONFIG,"<",$cfile) ||
-  die "# ERROR: cannot read config file $cfile, does \$DBPATH need to be set?\n";
+  die "# ERROR: cannot read config file $cfile, try -l to list supported graphs\n";
 while(<CONFIG>) {
   next if(/^#/);
   if(/([^:]+):\s+(\S+)/) {
