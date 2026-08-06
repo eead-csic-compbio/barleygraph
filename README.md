@@ -15,17 +15,20 @@ shipping with prebuilt PHG graphs of barley pangenomes and tools.
 
 Inspired by [BARLEYMAP](https://barleymap.eead.csic.es),
 sequence alignments are performed with [GMAP](http://research-pub.gene.com/gmap), which supports both 
-genomic sequences and transcripts. The series of genome sequences are scanned hierarchically; 
+genomic sequences and transcripts. The genome sequences making up a pangenome graph are scanned hierarchically; 
 the scan stops with the first match. GMAP matches and precomputed graph ranges are intersected with
-[BEDTOOLS](https://bedtools.readthedocs.io/en/latest). Genome assemblies compression and manage are done with [AGC 3.1](https://github.com/refresh-bio/agc).
+[BEDTOOLS](https://bedtools.readthedocs.io/en/latest). Genome assembly compression and management are done with 
+[AGC 3.1](https://github.com/refresh-bio/agc).
 
-> If your aiming is to align sequences and spot them in the several genomes of the graph, you may try the [Barleymap graph mode](https://barleymap.eead.csic.es/barleymap/graph/) on the website.
-> It is user-friendly, quick and alignments are computed remotely. If you are looking for mapping a big dataset, add more genomes to the graph, or do haplotype analysis,
-> you will need to work from the docker package, which requires terminal-commands knowledge and a bioinformatic server.
+> If your aim is to align barley sequences and locate them in the individual genomes of the graph, you may want to try the [graph mode](https://barleymap.eead.csic.es/barleymap/graph/) in the Barleymap Web app. It is user-friendly, quick and alignments are computed remotely. 
 
-#### Available Graphs (Pan20 Release)
 
-This release includes the **Pan20** graph. Note that the reference is **MorexV3** as annotated 
+>If you need to align a large dataset or carry out haplotype analysis, you will need to work with the Docker image, which requires typing commands on the terminal and disk space.
+
+#### Available pangenome graphs
+
+Currently this repository distributes flavours of the **Pan20** graph. 
+Note that the reference is **MorexV3** as annotated 
 at [IPK](https://galaxy-web.ipk-gatersleben.de/libraries/folders/Fa676e8f07209a3be/dataset/78efbc10d9dd2218):
 
 |graph|notes|genome names and scan order|
@@ -34,80 +37,59 @@ at [IPK](https://galaxy-web.ipk-gatersleben.de/libraries/folders/Fa676e8f07209a3
 
 ---
 
-### Quick Start Guide
+### Quick start Docker guide
 
-**1. Pull the Docker Image**
-Download the specific Pan20 release snapshot from the GitHub Container Registry:
-```bash
-docker pull ghcr.io/eead-csic-compbio/barleygraph:Pan20-20260721
+**1. Pull the Docker Image**. Download an image from the GitHub Container Registry:
+
+docker pull ghcr.io/eead-csic-compbio/barleygraph:20260807
 ```
 
-Once downloaded, get into the docker image. Important to mark: You will need to specify a path for the gmap database. It will also be useful to move in and out files from your image to your local computer.
-```bash
-docker run --rm -v /path/to/local_gmap_db/:/gmap_db/ -it ghcr.io/eead-csic-compbio/barleygraph:Pan20-20260721 /bin/bash
-```
+**2. Create local folders for GMAP indices, graphs and results**. This is done in the host computer, outside the container. This is required to keep the graph data separated from the code (Docker), and also to keep persistent copies of your results so that you can access them even when the Docker container is not running. You will need abundant disk space for the data. For instance, the downloadable `Pan20-mmap-pro` graph takes up 20GB and supports haplotype analysis only. You would need another 150GB should you build the GMAP indices required for align2grap. For instance, in Linux you could create the following folders in your home:
 
-> Since gmap index are bulky, those will be stored outside the container. More info below.
+    mkdir -m 777 -p ${HOME}/graph_db          #required
+    mkdir -m 777 -p ${HOME}/graph_db/input    #to place input FASTQ/FASTA files
+    mkdir -m 777 -p ${HOME}/graph_db/results  #to store output files
+    mkdir -m 777 -p ${HOME}/gmap_db           #only if you plant to run align2graph
 
-Several steps are required to run BARLEYGRAPH, depending if you want to do [mapping](https://github.com/eead-csic-compbio/barleygraph/edit/main/README.md#mapping) and/or [haplotype](https://github.com/eead-csic-compbio/barleygraph/edit/main/README.md#haplotype-analysis) analysis:
+**3. Run the image binding the local folders**. Bindings look like /full/path/local:/container. The following command will launch a container on your terminal, the promot should be similar to you@8ee9e89ed09c:/barleygraph$ :
 
-# Mapping
+    docker run -it -v ${HOME}/gmap_db/:/gmap_db -v ${HOME}/graph_db:/graph_db barleygraph:2026-08-07
+
+**4. Setup a graph**. At the container terminal type and run:
+
+    setup_graph -l                     #to see currently supported graphs
+    setup_graph -G Pan20-mmap-pro
+    setup_graph -G Pan20-mmap-pro -g   #to additionally make GMAP indices; can take hours
+
+**5. Imputate and call haplotypes** requires 1 single-end or 2 pair-end FASTQ files, which might be compressed:
+
+    imputation -G Pan20-mmap-pro -1 /graph_db/input/HOR_10096_GBS.fq -o /graph_db/results/
+
+This command should a hVCF output file `/graph_db/results/HOR_10096_GBS_1.h.vcf` and a folder `/graph_db/results/HOR_10096_GBS_1.hvcfdir/` that we can use in the next setp.
+
+**6. Paint haplotypes**:
+
+    haplopainting -h  #checkout options
+
+    haplopainting --hvcf-folder /graph_db/results//HOR_10096_GBS_1.hvcfdir/ --samples-list /graph_db/results//HOR_10096_GBS_1.hvcfdir/Pan20_samplelist.tsv -f pdf --plot-pangenome-references
+
+In addition to BED files converted from the original vVCF, this command will produce haplotype plots in folder `/graph_db/results/HOR_10096_GBS_1.hvcfdir/plots/`, one per chromosome, with graph genomes on top and sample below:
+
+<img src="https://github.com/eead-csic-compbio/barleygraph/blob/main/miscellaneous/chr4H_FULL_haplotype_painting.png"  width="400">
+
+**7. Mapping sequences in FASTA files**.
+
+    align2graph -h
+
+    align2graph --graph_yaml /graph_db/Pan20/Pan20-mmap-pro/Pan20-mmap-pro.yaml /graph_db/input/Vrn2.fna 
+
+### More details
+
+The next figures describe the `align2graph` algorithm:
 
 <img src="https://github.com/eead-csic-compbio/barleygraph/blob/main/miscellaneous/Align2graph_esquema.png"  width="400">
 
-The figure below shows the full `align2graph` workflow:
-
 <img src="https://github.com/eead-csic-compbio/barleygraph/blob/main/miscellaneous/align2graph_workflow.png" width="900">
-
-### 1. Create local folder for GMAP indices [mapping]
-
-This is done outside the container, as indices are bulky; in Linux you could do it as follows:
-
-    mkdir -m 777 -p /path/to/local_gmap_db
-
-### 2. Launch container and build GMAP indices [mapping]
-
-The container will first be downloaded if not found locally.
-The `index` command takes hours, over 8GB RAM and up to 163GB of disk, but it's only required the first time:
-
-    docker run --rm -v /path/to/local_gmap_db/:/gmap_db/ -it ghcr.io/eead-csic-compbio/barleygraph:Pan20-20260721 index
-
-| Genotype | Gmap index size (GB) |
-| :--- | :--- |
-| MorexV3 | 7.1 |
-| Akashinriki | 7.1 |
-| B1K-04-12 | 13 |
-| Barke | 7.1 |
-| Chiba | 7.2 |
-| Du_Li_Huang | 7.1 |
-| GoldenPromise | 7.1 |
-| HOR_10350 | 7 |
-| HOR_13821 | 7.1 |
-| HOR_13942 | 7.1 |
-| HOR_21599 | 7.1 |
-| HOR_3081 | 7.1 |
-| HOR_3365 | 7.1 |
-| HOR_7552 | 7.1 |
-| HOR_8148 | 7.1 |
-| HOR_9043 | 7.1 |
-| Hockett | 7.1 |
-| Igri | 7.1 |
-| OUN333 | 7.1 |
-| Planet | 7.1 |
-
- 
-### 3. Map sequences in FASTA files [mapping]
-
-Run this command line to find out about available optional flags in terminal:
-
-    docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it ghcr.io/eead-csic-compbio/barleygraph:Pan20-20260721 align2graph --help
-
-Required arguments are ```--graph_yaml <mmap_pro/gmap_geno.yaml>``` and ```<input_fasta>```.
-
-    docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it ghcr.io/eead-csic-compbio/barleygraph:Pan20-20260721 align2graph --graph_yaml Pan20_mmap-pro.yaml sequences.fa
-    docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it ghcr.io/eead-csic-compbio/barleygraph:Pan20-20260721 align2graph --graph_yaml Pan20_gmap_geno.yaml sequences.fa
-
-Optional arguments:
 
 | Argument | Description |
 | :--- | :--- |
@@ -127,12 +109,6 @@ Optional arguments:
 
 
 If ```--add_ranges <mode>```is on, output will contain each genome coordinates where your query sequence is found. You may use either GMAP, minimap2 or both at once, increasing required time but also accuracy.
-You can read a better explanation at _Mapping pangenes_ section of [barleygraph paper](https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRrTA6qsTDar992Z8SD7orh3o0ReV5Ng7c5lKsqFddk2g&s=10).
-
-    docker run --rm -v ~/local_gmap_db/:/gmap_db/ -it ghcr.io/eead-csic-compbio/barleygraph:Pan20-20260721 align2graph --graph_yaml <config.yaml> --add_ranges <mode> sequences.fa
-
-
-### 4. Mapping output
 
 The parameters of a mapping run are included in the header as # comments.
 The mapping results are in TSV format with the following columns:
@@ -168,146 +144,16 @@ Example output after mapping the VRN2 nucleotide sequence.
     #query	ref_chr		ref_start	ref_end		ref_strand	genome	chr	start	end	strand	perc_ident	perc_cover	multmaps	graph_ranges
     VRN2	chr4H_LR890099.1	604188191	604197211	.	HOR_2830	chr4H	602386783	602388450	-	98.8	100.0	No	.
 
-# Haplotype analysis
-kmer-based alignment of input FASTQ ﬁles from low-deep whole genome sequencing data. Infer haplotype blocks from the pangenome, achieving a pseudoassembly. It applies the [Viterbi algorithm](https://en.wikipedia.org/wiki/Viterbi_algorithm) to preserve local haplotype context, improving both ancestry inference and imputation accuracy
+#### Imputation and haplotype analysis
 
 <img src="https://github.com/eead-csic-compbio/barleygraph/blob/main/miscellaneous/Imputation_esquema.png" width="300">
 
-### Build kmer index
+The resulting file is a [h.vcf](https://phg.maizegenetics.net/hvcf_specifications/) file, a **h**aplotype **v**ariant **c**all **f** or hVCF. Find more details at the [official specification documents](https://phg.maizegenetics.net/convenience_commands/#create-a-gff-file-from-an-imputed-hvcf-file). It is essentially a gapless pseudoassembly based on the inference of haplotype blocks, where each line corresponds to an individual block or range.
 
-If you are looking for imputate sequencing data against our released databases, kmer index are precomputed; you don't need to run this step. 
-If you have modified or increased a database, It is mandatory for afterwards imputate queries. 
-
-> Requires high ammount of resources, >12 RAM GB, >100 GB of free -temporary- disk space, and up to 32 CPU hours. It depends on your machine and threads used (expect 1 hour if you provide 32 CPU cores).
-
-    build_imputation_index
-    build_imputation index -t <int>
-
- >    Note: Default threads if not specified = 8
-
-It generates a [ropebwt3](https://github.com/lh3/ropebwt3) index file, with _.fmd_ extension.
-
-Running the commnd ```build_imputation_index``` will allow you to choose which database are you interested on (mmap_pro or gmap_geno).
-Index is moved to gmap_db external folder while remain accesible inside the docker image.
-
-### Imputation
-
-From fastq files, maps and get back the most likely haplotype paths. The resulting file is actually a [h.vcf](https://phg.maizegenetics.net/hvcf_specifications/) file.
-Take as imput raw fastq reads (two files, if there are pair-ended reads). Files must end with ```.fastq```,```.fq```,```.fastq.gz``` or ```fq.gz```.
-
-    imputation <R1_fastq> 
-    imputation <R1_fastq> <R2_fastq>
-
->    Note: You can specify a number of threads to commit
-> 
->    If empty field,  default value is 8 threads
-
-    imputation <R1_fastq> -t <int>
-    imputation <R1_fastq> <R2_fastq> -t <int>
-
-You will be asked to choose which database you want to use (mmap_pro or gmap_geno). 
-
-The output file is a **h**aplotype **v**ariant **c**all **f** or hVCF. Find more details at the [official specification documents](https://phg.maizegenetics.net/convenience_commands/#create-a-gff-file-from-an-imputed-hvcf-file). It is basically a gapless pseudoassembly based on the inference of haplotype blocks, where each line correspond to an individual block or range.
+Generate visual plots of haplotype blocks from h.vcf files showing how different samples' genomes are composed of pangenome haplotypes.
 
 
-### Imputed haplotypes processing (optional)
-
-Optional step: Convert h.vcf (haplotype VCF) files to BED format for easier analysis and visualization:
-
-    hvcf2bed <vcf_folder> [genome_name]
-    hvcf2bed <vcf_folder> [genome_name] -v
-
-**Arguments:**
-- `vcf_folder`: Path to folder containing h.vcf or h.vcf.gz files
-- `genome_name` (optional): Specific genome to convert. If not provided, converts all h.vcf files in folder
-- `-v, --verbose`: Enable verbose output for debugging
-
-**Output:** Creates a BED file for each h.vcf file with columns: chrom, start, end, strand, checksum, genome, ref_chr, ref_start, ref_end, ref_checksum
-
-**Example:**
-```bash
-hvcf2bed Med13/vcf_dbs/hvcf_files/ MorexV3
-hvcf2bed Med13/vcf_dbs/hvcf_files/ -v  # Convert all files with verbose output
-```
-
-### Haplotype path painting
-
-Generate visual plots of haplotype blocks from h.vcf files showing how different samples' genomes are composed of pangenome haplotypes:
-
-> NOTE: You need to have all both pangenome and imputed .h.vcf files in the same folder. You may either move the imputed file to the folder with other pangenome files, the oposite (move the pangenome files into the output imputed files) or just create a new folder with soft links to group them up.
-
-![Haplopainting_example](https://github.com/eead-csic-compbio/barleygraph/blob/main/miscellaneous/chr4H_FULL_haplotype_painting.png)
-
-    haplopainting --hvcf-folder <path> --samples-list <file> [options]
-
-**Arguments:**
-- `--hvcf-folder` (required): Path to folder containing h.vcf files
-- `--samples-list` (required): TSV file with columns: Sort, Genotype, Group (Reference/Pangenome/Imputed)
-- `-c, --chromosome` (optional): Specific chromosome(s) to plot (e.g., chr1H chr2H). If not specified, all are plotted
-- `-r, --region` (optional): Region to plot in format START-END (e.g., 1000000-2000000)
-- `--plot-pangenome-references`: Include pangenome samples in plots (default: exclude)
-- `-v, --verbose`: Enable verbose output showing progress
-
-**Samples list format:**
-```
-Sort	Genotype	Group
-1	MorexV3	Reference
-2	HOR_2830	Pangenome
-3	HOR_1168	Pangenome
-...
-15  YourSample  Imputed
-...
-```
-
->    Note: You can use `samplelist.tsv` as a template and add your imputed samples there.
-
-**Output:** PNG plots saved in `<hvcf_folder>/plots/` directory
-
-**Example:**
-```bash
-haplopainting --hvcf-folder Med13/vcf_dbs/hvcf_files/ --samples-list samplelist.tsv -v
-haplopainting --hvcf-folder Med13/vcf_dbs/hvcf_files/ --samples-list samplelist.tsv -c chr1H chr2H --plot-pangenome-references
-haplopainting --hvcf-folder Med13/vcf_dbs/hvcf_files/ --samples-list samplelist.tsv -c chr1H -r 1000000-2000000 -v
-```
-
-## Current status:
-
-Pan20 at this moment is made up with mmap_pro or gmap_geno modes (more info in ongoing paper publication). You also have an Example dataset made of few base pairs of two arabidopsis chromosomes, useful to test some utilities and build new ones.
-
-## Modifying or new databases
-
-PHG databases are scalable and easy to modify. Adding new ```.h.vcf``` and ```.bed``` to a folder is enough to increase/decrease genomes to work on imputation and mapping. 
-Docker image is fully equiped for it. To add new genomes, you will have to align sequences to the reference genome, and construct ```h.vcf``` files. Follow [PHG](https://github.com/maize-genetics/phg_v2) guidelines 
-for an easy default (mmap_pro) alignment, or our in-terminal command indications in [barleygraph paper](https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRrTA6qsTDar992Z8SD7orh3o0ReV5Ng7c5lKsqFddk2g&s=10) for other architectures.
-
-If you want to build from scratch a new database, you may find interesting our [build PHG database script](https://github.com/eead-csic-compbio/barleygraph/blob/main/graphs/build_PHG_database.sh). Just by modifing the [config file](https://github.com/eead-csic-compbio/barleygraph/blob/main/graphs/PHG_database.example.config) and running the command like:
-```bash
-./build_PHG_database.sh --config <path/to/database.config>
-```
-All will be done automatically, for default _mmap\_pro_ architecture. For others, like _gmap\_geno_ you will needto substitute the ```phg align_assemblies``` command by two individual steps, on your convenience.
-
-## For developers
-
-Debuging the container may be though, its convenient to use a example toyset. Running:
-```bash
-docker pull ghcr.io/eead-csic-compbio/barleygraph:Example_Ara-20260721
-```
-You are getting a set of few arabidopsis genomes croped in some kb for chr1 & chr2 that are convinient to use.
-To build an image using the [docker file](https://github.com/eead-csic-compbio/barleygraph/blob/main/docker/Dockerfile), you only need a local file Example_Ara.tgz, which can not be uploaded here, but that you can export from the pulled docker. You might try:
-```bash
-docker run --rm   -v /scratch/PHG_barleymap/barleygraph/graphs/Ara_toyset/gmap_db/:/gmap_db/   -it ghcr.io/eead-csic-compbio/barleygraph:Example_Ara-20260721   /bin/bash
-tar -czvf Example_Ara.tar.gz Example_Ara/
-```
-Store the file in same folder as the Docker file and run it:
-```bash
-docker build \
-  --build-arg graph=Example_Ara \
-  -t <image_name:tag> \
-  -f docker/Dockerfile .
-```
-To check how has this dataset being built: [Example_Ara config file](https://github.com/eead-csic-compbio/barleygraph/blob/main/graphs/PHG_Example_Ara_database.config).
-
-## Troubleshooting
+### Troubleshooting
 
 If the `docker` commands above fail with an error similar to 
 
@@ -315,7 +161,7 @@ If the `docker` commands above fail with an error similar to
 
 please check the instructions at https://docs.docker.com/engine/install/linux-postinstall
 
-## References
+### References
 
 See the files at [graphs/](https://github.com/eead-csic-compbio/barleygraph/tree/main/graphs) for the source of genome sequences and the MorexV3 gene annotation.
 
@@ -331,18 +177,11 @@ See the files at [graphs/](https://github.com/eead-csic-compbio/barleygraph/tree
 
 * Mascher M, Wicker T, Jenkins J, et al (2021) Long-read sequence assembly: a technical evaluation in barley. The Plant Cell 33(6):1888-1906. https://doi.org/10.1093/plcell/koab077
 
-## Citation
+### Citation
 
 
-## Funding 
+##3 Funding 
 
-[PRIMA GENDIBAR, PCI2019-103526] supported by Horizon 2020 
-
-[A08_23R] funded by Aragón goverment 
-
-[FAS2022_052, INFRA24018, conexión BCB] funded by CSIC
-
-[PID2022-142116OB-I00] by MICIU/AEI/10.13039/501100011033
+This work was supported by AEI/10.13039/501100011033/FEDER/UE [PID2022-142116OB-I00 and predoctoral contract PREP2022_EEAD_52 to JSA], Horizon 2020 PRIMA [PCI2019-103526] and SusCrop ERA-NET Recobar [771134], Government of Aragon [A08_23R] and CSIC [FAS2022_052, INFRA24018].
 
 ![AEI](./miscellaneous/AEI.jpg)
-
