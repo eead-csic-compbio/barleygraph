@@ -18,7 +18,7 @@ VOLUME /graph_db
 # Bound in runtime to writable local dir. Persistent storage of results.
 VOLUME /results
 
-RUN mkdir /barleygraph
+RUN mkdir -m 777 /barleygraph
 WORKDIR /barleygraph
 
 ## install system deps as root
@@ -69,7 +69,7 @@ RUN wget https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/refs/he
 RUN chmod +x align2graph.py
 
 # scripts and config files from GitHub repository
-RUN wget -qO gmap_build.sh https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/gmap_build.sh
+RUN wget -qO gmap_index.sh https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/gmap_index.sh
 RUN wget -qO build_imputation_index.sh https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/build_imputation_index.sh
 RUN wget -qO imputation.pl https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/imputation.pl
 RUN wget -qO setup_graph.pl https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/setup_graph.pl
@@ -91,16 +91,17 @@ ENV MPLCONFIGDIR=/tmp/matplotlib_cache
 ENV XDG_CACHE_HOME=/tmp/xdg_cache
 
 # Ensure scripts are executable
-RUN chmod +x gmap_build.sh build_imputation_index.sh imputation.pl setup_graph.pl
+RUN chmod +x gmap_index.sh build_imputation_index.sh imputation.pl setup_graph.pl
 
 # Remove .sh extensions from shell scripts and rename setup_databases.sh to setup_database
 RUN mv imputation.pl imputation && \
     mv setup_graph.pl setup_graph && \
-    mv build_imputation_index.sh build_imputation_index 
+    mv gmap_index.sh gmap_index && \
+    mv build_imputation_index.sh build_imputation_index
 
 # Create wrapper scripts that safely invoke the conda environment via conda run
 RUN echo '#!/bin/bash' > /barleygraph/align2graph && \
-    echo 'exec conda run -n phgv2.4 python3 "$@"' >> /barleygraph/align2graph && \
+    echo 'exec conda run -n phgv2.4 python3 align2graph.py "$@"' >> /barleygraph/align2graph && \
     chmod +x /barleygraph/align2graph
 
 RUN echo '#!/bin/bash' > /barleygraph/haplopainting && \
@@ -116,3 +117,7 @@ RUN rm -rf /opt/miniconda3/pkgs/*
 
 ENV PATH="/barleygraph:${GPATH}/bin:${PHGPATH}:${PATH}"
 #SHELL ["conda", "run", "--no-capture-output", "-n", "phgv2.4", "/bin/bash", "-c"]
+
+RUN useradd --create-home --shell /bin/bash you
+ENV USER=you
+USER you
