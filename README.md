@@ -23,13 +23,13 @@ the scan stops with the first match. GMAP matches and precomputed graph ranges a
 > If your aim is to align barley sequences and locate them in the individual genomes of the graph, you may want to try the [graph mode](https://barleymap.eead.csic.es/barleymap/graph/) in the Barleymap Web app. It is user-friendly, quick and alignments are computed remotely. 
 
 
->If you need to align a large dataset or carry out haplotype analysis, you will need to work with the Docker image, which requires typing commands on the terminal and disk space.
+>If you need to align a large dataset or carry out haplotype analysis, you will need to work with the Docker image, which requires typing commands on the terminal and disk space. Check the guide below.
 
 #### Available pangenome graphs
 
 Currently this repository distributes flavours of the **Pan20** graph. 
 Note that the reference is **MorexV3** as annotated 
-at [IPK](https://galaxy-web.ipk-gatersleben.de/libraries/folders/Fa676e8f07209a3be/dataset/78efbc10d9dd2218):
+at [IPK](https://galaxy-web.ipk-gatersleben.de/libraries/folders/Fa676e8f07209a3be/dataset/78efbc10d9dd2218), HC genes only:
 
 |graph|notes|genome names and scan order|
 |:----|:----|:-----------|
@@ -41,8 +41,7 @@ at [IPK](https://galaxy-web.ipk-gatersleben.de/libraries/folders/Fa676e8f07209a3
 
 **1. Pull the Docker Image**. Download an image from the GitHub Container Registry:
 
-docker pull ghcr.io/eead-csic-compbio/barleygraph:20260807
-```
+    docker pull ghcr.io/eead-csic-compbio/barleygraph:20260807
 
 **2. Create local folders for GMAP indices, graphs and results**. This is done in the host computer, outside the container. This is required to keep the graph data separated from the code (Docker), and also to keep persistent copies of your results so that you can access them even when the Docker container is not running. You will need abundant disk space for the data. For instance, the downloadable `Pan20-mmap-pro` graph takes up 20GB and supports haplotype analysis only. You would need another 150GB should you build the GMAP indices required for align2grap. For instance, in Linux you could create the following folders in your home:
 
