@@ -41,7 +41,7 @@ at [IPK](https://galaxy-web.ipk-gatersleben.de/libraries/folders/Fa676e8f07209a3
 
 **1. Pull the Docker Image**. Download an image from the GitHub Container Registry:
 
-    docker pull ghcr.io/eead-csic-compbio/barleygraph:20260807
+    docker pull ghcr.io/eead-csic-compbio/barleygraph:2026-08-07
 
 **2. Create local folders for GMAP indices, graphs and results**. This is done in the host computer, outside the container. This is required to keep the graph data separated from the code (Docker), and also to keep persistent copies of your results so that you can access them even when the Docker container is not running. You will need abundant disk space for the data. For instance, the downloadable `Pan20-mmap-pro` graph takes up 20GB and supports haplotype analysis only. You would need another 150GB should you build the GMAP indices required for align2grap. For instance, in Linux you could create the following folders in your home:
 
@@ -52,7 +52,7 @@ at [IPK](https://galaxy-web.ipk-gatersleben.de/libraries/folders/Fa676e8f07209a3
 
 **3. Run the image binding the local folders**. Bindings look like /full/path/local:/container. The following command will launch a container on your terminal, the promot should be similar to you@8ee9e89ed09c:/barleygraph$ :
 
-    docker run -it -v ${HOME}/gmap_db/:/gmap_db -v ${HOME}/graph_db:/graph_db barleygraph:2026-08-07
+    docker run -it -v ${HOME}/gmap_db/:/gmap_db -v ${HOME}/graph_db:/graph_db ghcr.io/eead-csic-compbio/barleygraph:2026-08-07
 
 **4. Setup a graph**. At the container terminal type and run:
 
