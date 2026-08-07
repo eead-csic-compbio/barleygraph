@@ -131,17 +131,20 @@ The mapping results are in TSV format with the following columns:
 
 Example output after mapping the VRN2 nucleotide sequence.
 
+    # version: 8bbfb5f 2026-05-28
     # GMAP version: 2013-08-31
-    # config_file: graph.yaml
-    # fasta_file: old_bruno/VRN2.fa
+    # config_file: /graph_db/Pan20/Pan20-mmap-pro/Pan20-mmap-pro.yaml
+    # fasta_file: /graph_db/input/Vrn2.fna
     # minimum identity %: 98.0
     # minimum coverage %: 95.0
     # minimum coverage range %: 75.0
+    # add_ranges: False (Tool: None)
+    # force_ranges: False
     # genomic: False
-    # ranked pangenome genomes: MorexV3, HOR_2830, HOR_1168, HOR_14121, GDB_136, HOR_3365, HOR_3474, HOR_13942, HOR_21599, HOR_12184, HOR_2779, HOR_10892, HOR_21595
+    # ranked pangenome genomes: MorexV3, Hockett, Igri, Du_Li_Huang, Planet, HOR_9043, Barke, HOR_13821, HOR_21599, HOR_3365, HOR_8148, HOR_13942, GoldenPromise, B1K-04-12, HOR_10350, HOR_7552, OUN333, Chiba, Akashinriki, HOR_3081
 
-    #query	ref_chr		ref_start	ref_end		ref_strand	genome	chr	start	end	strand	perc_ident	perc_cover	multmaps	graph_ranges
-    VRN2	chr4H_LR890099.1	604188191	604197211	.	HOR_2830	chr4H	602386783	602388450	-	98.8	100.0	No	.
+    #query  ref_chr         ref_start       ref_end         ref_strand      genome  chr     start   end     strand  perc_ident       perc_cover      multmaps        graph_ranges
+    Horvu_13942_4H01G516500.1      chr4H_LR890099.1        604188191       604202141       .       Igri     chr4H   602527414       602529082       -       98.0    100.0   No      .
 
 #### Imputation and haplotype analysis
 
