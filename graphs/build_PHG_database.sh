@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
     cat <<'EOF'
-Usage: ./build_PHG_database.sh --config <path/to/database.config> [--dry-run]
+Usage: ./build_PHG_database.sh --config <path/to/database.config> [--dry-run] [--skip-gmap]
 
 The config file must define at least:
   DATABASE_NAME=<name>
@@ -20,11 +20,13 @@ Optional keys:
   THREADS=<int>                  # default 32
   CONDA_ENV=<name>               # default phgv2-conda
   GMAP_BUILD_CMD=<path>          # default /usr/local/bin/gmap_build
+  BUILD_GMAP=<true|false>        # default true
 EOF
 }
 
 CONFIG_FILE=""
 DRY_RUN=0
+SKIP_GMAP=0
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -35,6 +37,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --dry-run)
             DRY_RUN=1
+            shift
+            ;;
+        --skip-gmap)
+            SKIP_GMAP=1
             shift
             ;;
         -h|--help)
@@ -392,6 +398,11 @@ while IFS= read -r raw_line || [[ -n "$raw_line" ]]; do
             GMAP_BUILD_CMD)
                 GMAP_BUILD_CMD="$value"
                 ;;
+            BUILD_GMAP)
+                if [[ "${value,,}" == "false" || "$value" == "0" ]]; then
+                    SKIP_GMAP=1
+                fi
+                ;;
             ASSEMBLYS|ASSEMBLY_FASTA|ASSEMBLY_SOURCE|ASSEMBLY_FASTAS)
                 append_assembly_sources "$value"
                 ;;
@@ -424,7 +435,7 @@ if [[ "$DRY_RUN" -eq 0 ]]; then
     require_command phg
     require_command samtools
     require_command tabix
-    if ! command -v "$GMAP_BUILD_CMD" >/dev/null 2>&1; then
+if [[ "$SKIP_GMAP" -eq 0 ]] && ! command -v "$GMAP_BUILD_CMD" >/dev/null 2>&1; then
         echo "Error: gmap_build not found at $GMAP_BUILD_CMD" >&2
         exit 1
     fi
@@ -538,17 +549,21 @@ else
     fi
 fi
 
-if [[ "$DRY_RUN" -eq 1 ]]; then
-    echo "[DRY-RUN] would build GMAP databases"
+if [[ "$SKIP_GMAP" -eq 0 ]]; then
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        echo "[DRY-RUN] would build GMAP databases"
+    else
+        for assembly_file in "${ASSEMBLY_FILES[@]}"; do
+            assembly_name="$(basename_without_ext "$assembly_file")"
+            genome_dir="$GMAP_DB_DIR/${assembly_name}"
+            if [[ ! -f "$genome_dir/${assembly_name}.chromosome" ]]; then
+                mkdir -p "$genome_dir"
+                run_cmd "$GMAP_BUILD_CMD" -D "$GMAP_DB_DIR/" -d "$assembly_name" "$assembly_file"
+            fi
+        done
+    fi
 else
-    for assembly_file in "${ASSEMBLY_FILES[@]}"; do
-        assembly_name="$(basename_without_ext "$assembly_file")"
-        genome_dir="$GMAP_DB_DIR/${assembly_name}"
-        if [[ ! -f "$genome_dir/${assembly_name}.chromosome" ]]; then
-            mkdir -p "$genome_dir"
-            run_cmd "$GMAP_BUILD_CMD" -D "$GMAP_DB_DIR/" -d "$assembly_name" "$assembly_file"
-        fi
-    done
+    echo "Skipping GMAP Database building as requested."
 fi
 
 HVCF2BED_URL="https://raw.githubusercontent.com/jsarriaa/PHGv2Tools/main/src/phgtools/modules/hvcf2bed.py"
