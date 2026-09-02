@@ -21,6 +21,13 @@ $graphs{'Pan20-mmap-pro'}{'URL'} =
 $graphs{'Pan20-mmap-pro'}{'last'} = 13;
 $graphs{'Pan20-mmap-pro'}{'md5sum'} = '268a3ce14ebf250bc56b267557e24e49';
 
+# Pan20 gmap-geno
+$graphs{'Pan20-gmap-geno'}{'subfolder'} = 'Pan20';
+$graphs{'Pan20-gmap-geno'}{'URL'} = 
+  'https://github.com/eead-csic-compbio/barleygraph/releases/download/Pan20-gmap-geno-1.0/Pan20-gmap-geno00.part';
+$graphs{'Pan20-gmap-geno'}{'last'} = 13;
+$graphs{'Pan20-gmap-geno'}{'md5sum'} = '6d55722351d2348822c05df007878e46';
+
 my $graph_master_url = 'https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/refs/heads/main/graphs/';
 
 my $target_path = abs_path('/graph_db'); # should match Docker
