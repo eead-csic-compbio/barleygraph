@@ -26,7 +26,7 @@ $graphs{'Pan20-gmap-geno'}{'subfolder'} = 'Pan20';
 $graphs{'Pan20-gmap-geno'}{'URL'} = 
   'https://github.com/eead-csic-compbio/barleygraph/releases/download/Pan20-gmap-geno-1.0/Pan20-gmap-geno00.part';
 $graphs{'Pan20-gmap-geno'}{'last'} = 13;
-$graphs{'Pan20-gmap-geno'}{'md5sum'} = '6d55722351d2348822c05df007878e46';
+$graphs{'Pan20-gmap-geno'}{'md5sum'} = '628d4b165a000353d615bfed898c3584';
 
 my $graph_master_url = 'https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/refs/heads/main/graphs/';
 
