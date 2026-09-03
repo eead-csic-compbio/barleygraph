@@ -36,52 +36,94 @@ Note that the reference is **MorexV3** as annotated at
 |:----|:----|:-----------|
 |Pan20|genomes in barley pangenome V1, latest available assemblies|MorexV3, Barke, HOR_9043, HOR_10350, HOR_3081, HOR_3365, Planet, HOR_7552, Akashinriki, OUN333, HOR_13942, HOR_13821, HOR_21599, Igri, Chiba, B1K-04-12, Du_Li_Huang, HOR_8148, GoldenPromise, Hockett|
 
----
+
 
 ### Quick start Docker guide
 
 **1. Pull the Docker Image**. Download an image from the GitHub Container Registry:
 
-    docker pull ghcr.io/eead-csic-compbio/barleygraph:2026-08-07
+    docker pull ghcr.io/eead-csic-compbio/barleygraph:2026-09-03
 
-**2. Create local folders for GMAP indices, graphs and results**. This is done in the host computer, outside the container. This is required to keep the graph data separated from the code (Docker), and also to keep persistent copies of your results so that you can access them even when the Docker container is not running. You will need abundant disk space for the data. For instance, the downloadable `Pan20-mmap-pro` graph takes up 20GB and supports haplotype analysis only. You would need another 150GB should you build the GMAP indices required for align2grap. For instance, in Linux you could create the following folders in your home:
+**2. Create local persistent folders for graphs & GMAP indices**. This is done in the host computer, outside the container. This is required to keep persistent graph data separated from the code (Docker). You will need abundant disk space for the data. For instance, the downloadable `Pan20-mmap-pro` graph takes up to 20GB and supports haplotype analysis only. You would need another 150GB should you build the GMAP indices required for align2grap. For instance, in Linux you could create the following folders in your home:
 
-    mkdir -m 777 -p ${HOME}/graph_db          #required
-    mkdir -m 777 -p ${HOME}/graph_db/input    #to place input FASTQ/FASTA files
-    mkdir -m 777 -p ${HOME}/graph_db/results  #to store output files
-    mkdir -m 777 -p ${HOME}/gmap_db           #only if you plant to run align2graph
+    mkdir -m 777 -p ${HOME}/graph_db     #required
+    mkdir -m 777 -p ${HOME}/gmap_db      #required to run align2graph
 
-**3. Run the image binding the local folders**. Bindings look like /full/path/local:/container. The following command will launch a container on your terminal, the promot should be similar to you@8ee9e89ed09c:/barleygraph$ :
+These folders will be bound by the Docker container at runtime. Binding arguments look like this: `/full/path/local:/container`.
 
-    docker run -it -v ${HOME}/gmap_db/:/gmap_db -v ${HOME}/graph_db:/graph_db ghcr.io/eead-csic-compbio/barleygraph:2026-08-07
+**3. Create a local folder for results (optional)**. If you run the `imputation` and `haplopainting` scripts you will need also a writable folder to store results which you can review even when the container is off:
 
-**4. Setup a graph**. At the container terminal type and run:
+    mkdir -m 777 -p ${HOME}/results
 
-    setup_graph -l                     #to see currently supported graphs
+**4. Binding the local input folder**. You will need to add another argument to bind the folder containing your input FASTA and FASTQ files. For instance this could be a folder in your home which will be referrod to within the container as `/user`:
+
+    -v ${HOME}/datafiles/:/user
+
+See examples below on how to actually analyze your own input.
+
+**5. Check installed and setup graphs**. Try the following commands:
+
+    # list graphs that can be downloaded from this site
+    docker run -it -v ${HOME}/gmap_db/:/gmap_db -v ${HOME}/graph_db:/graph_db ghcr.io/eead-csic-compbio/barleygraph:latest setup_graph -l
+
+    # see currently locally installed graphs
+    docker run -it -v ${HOME}/gmap_db/:/gmap_db -v ${HOME}/graph_db:/graph_db ghcr.io/eead-csic-compbio/barleygraph:latest setup_graph -I
+
+    # download and install a listed graph, this will take an hour
     setup_graph -G Pan20-mmap-pro
-    setup_graph -G Pan20-mmap-pro -g   #to additionally make GMAP indices; can take hours
 
-**5. Imputate and call haplotypes** requires 1 single-end or 2 pair-end FASTQ files, which might be compressed:
+    # optionally make GMAP indices; required to run align2graph, will take more time 
+    setup_graph -G Pan20-mmap-pro -g
 
-    imputation -G Pan20-mmap-pro -1 /graph_db/input/HOR_10096_GBS.fq -o /graph_db/results/
+**6. Imputate and call haplotypes** requires 1 single-end or 2 pair-end FASTQ files, which might be compressed:
 
-This command should a hVCF output file `/graph_db/results/HOR_10096_GBS_1.h.vcf` and a folder `/graph_db/results/HOR_10096_GBS_1.hvcfdir/` that we can use in the next setp.
+    # check options
+    docker run -it ghcr.io/eead-csic-compbio/barleygraph:latest imputation
 
-**6. Paint haplotypes**:
+    # run test FASTQ file, binding args are stored in variable for convenience
+    BINDS="-v ${HOME}/results:/results -v ${HOME}/graph_db:/graph_db"
+    docker run -it ${BINDS}  ghcr.io/eead-csic-compbio/barleygraph:latest imputation -G Pan20-mmap-pro -1 test.fq -o /results/
 
-    haplopainting -h  #checkout options
+    # example with input data provided by user, see step 4 and BINDS below
+    BINDS="-v ${HOME}/datafiles/:/user -v ${HOME}/results:/results -v ${HOME}/graph_db:/graph_db"
+    docker run -it ${BINDS} ghcr.io/eead-csic-compbio/barleygraph:latest imputation -G Pan20-mmap-pro -1 /user/example.fq -o /results/
 
-    haplopainting --hvcf-folder /graph_db/results//HOR_10096_GBS_1.hvcfdir/ --samples-list /graph_db/results//HOR_10096_GBS_1.hvcfdir/Pan20_samplelist.tsv -f pdf --plot-pangenome-references
+Thess command produce a hVCF output file `..._1.h.vcf` and a folder `..._1.hvcfdir/` that we can use in the next setp.
 
-In addition to BED files converted from the original vVCF, this command will produce haplotype plots in folder `/graph_db/results/HOR_10096_GBS_1.hvcfdir/plots/`, one per chromosome, with graph genomes on top and sample below:
+**7. Paint haplotypes**. This requires an output folder produced in the previous step:
+
+    # check options
+    docker run ghcr.io/eead-csic-compbio/barleygraph:latest haplopainting -h
+
+    # run with previous imputation results
+    BINDS="-v ${HOME}/results:/results -v ${HOME}/graph_db:/graph_db"
+    docker run -it ${BINDS} ghcr.io/eead-csic-compbio/barleygraph:latest haplopainting --hvcf-folder /results/..._1.hvcfdir/ --samples-list /results/..._1.hvcfdir/Pan20_samplelist.tsv -f pdf --plot-pangenome-references
+
+In addition to BED files converted from the original hVCF, this command will produce haplotype plots in folder `/results/..._1.hvcfdir/plots/`, one per chromosome, with graph genomes on top and sample below:
 
 <img src="https://github.com/eead-csic-compbio/barleygraph/blob/main/miscellaneous/chr4H_FULL_haplotype_painting.png"  width="400">
 
-**7. Mapping sequences in FASTA files**.
+**8. Mapping sequences in FASTA files**. This requires GMAP indices, see step 5:
 
-    align2graph -h
+    # check options 
+    docker run ghcr.io/eead-csic-compbio/barleygraph:latest align2graph -h
 
-    align2graph --graph_yaml /graph_db/Pan20/Pan20-mmap-pro/Pan20-mmap-pro.yaml /graph_db/input/Vrn2.fna 
+    # run test FASTA file, YAML config file for relevant graph is required
+    BINDS="-v ${HOME}/gmap_db:/gmap_db -v ${HOME}/graph_db:/graph_db"
+    YAML="--graph_yaml /graph_db/Pan20/Pan20-mmap-pro/Pan20-mmap-pro.yaml"
+    docker run -it ${BINDS} ghcr.io/eead-csic-compbio/barleygraph:latest align2graph ${YAML} test.fa
+    
+    # request aligned segments in all matched graph genomes
+    docker run -it ${BINDS} ghcr.io/eead-csic-compbio/barleygraph:latest align2graph ${YAML} test.fa --add_ranges both
+
+    # example with input data provided by user
+    BINDS="-v ${HOME}/datafiles/:/user -v ${HOME}/results:/results -v ${HOME}/graph_db:/graph_db"
+    docker run -it ${BINDS} ghcr.io/eead-csic-compbio/barleygraph:latest align2graph ${YAML} /user/example.fa --add_ranges both
+
+**9. Get citation**.
+
+    docker run -it ghcr.io/eead-csic-compbio/barleygraph:latest citation
+
 
 ### More details
 
@@ -146,6 +188,8 @@ Example output after mapping the VRN2 nucleotide sequence.
 
     #query  ref_chr         ref_start       ref_end         ref_strand      genome  chr     start   end     strand  perc_ident       perc_cover      multmaps        graph_ranges
     Horvu_13942_4H01G516500.1      chr4H_LR890099.1        604188191       604202141       .       Igri     chr4H   602527414       602529082       -       98.0    100.0   No      .
+
+Note that pangenome genomes are ranked by contributed ranges; those number will change across graphs.
 
 #### Imputation and haplotype analysis
 
