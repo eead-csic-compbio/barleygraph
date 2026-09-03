@@ -70,6 +70,7 @@ RUN wget -qO build_imputation_index.sh https://raw.githubusercontent.com/eead-cs
 RUN wget -qO imputation.pl https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/imputation.pl
 RUN wget -qO setup_graph.pl https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/setup_graph.pl
 RUN wget -qO citation.pl https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/citation.pl
+RUN chmod +x citation.pl
 RUN wget -qO test.fa https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/test.fa
 RUN wget -qO test.fq https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/test.fq
 
