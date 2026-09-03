@@ -5,6 +5,7 @@ LABEL description="Container with align2graph and selected tools"
 LABEL license="GPLv3"
 LABEL maintainers="compbio@eead.csic.es"
 LABEL org.opencontainers.image.source="https://github.com/eead-csic-compbio/barleygraph"
+LABEL citation="Sarria J et al (2026) bioRxiv 2026.08.06.741139; doi: https://doi.org/10.64898/2026.08.06.741139"
 
 USER root
 
@@ -14,9 +15,6 @@ VOLUME /gmap_db
 
 # Bound in runtime to writable local dir. Persistent storage of PHG graph files.
 VOLUME /graph_db
-
-# Bound in runtime to writable local dir. Persistent storage of results.
-VOLUME /results
 
 RUN mkdir -m 777 /barleygraph
 WORKDIR /barleygraph
@@ -63,16 +61,17 @@ RUN tar xfz gmap-gsnap-${GVER}.tar.gz && cd gmap-${GVER} && \
     make && make install && make clean
 RUN rm gmap-gsnap-${GVER}.tar.gz
 
-# align2graph 
+# copy scripts and test data from GitHub repository
 RUN wget https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/refs/heads/main/align2graph.py
 RUN wget https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/refs/heads/main/version.py
 RUN chmod +x align2graph.py
-
-# scripts and config files from GitHub repository
 RUN wget -qO gmap_index.sh https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/gmap_index.sh
 RUN wget -qO build_imputation_index.sh https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/build_imputation_index.sh
 RUN wget -qO imputation.pl https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/imputation.pl
 RUN wget -qO setup_graph.pl https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/setup_graph.pl
+RUN wget -qO citation.pl https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/docker/scripts/citation.pl
+RUN wget -qO test.fa https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/test.fa
+RUN wget -qO test.fq https://raw.githubusercontent.com/eead-csic-compbio/barleygraph/main/test.fq
 
 # Ensure correct conda paths for anaconda/miniconda image are fully exposed globally
 ENV PATH="/opt/miniconda3/bin:/opt/miniconda3/envs/phgv2.4/bin:${PATH}"
@@ -96,6 +95,7 @@ RUN chmod +x gmap_index.sh build_imputation_index.sh imputation.pl setup_graph.p
 # Remove .sh extensions from shell scripts and rename setup_databases.sh to setup_database
 RUN mv imputation.pl imputation && \
     mv setup_graph.pl setup_graph && \
+    mv citation.pl citation && \
     mv gmap_index.sh gmap_index && \
     mv build_imputation_index.sh build_imputation_index
 
