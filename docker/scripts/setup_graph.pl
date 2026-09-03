@@ -15,13 +15,14 @@ use FindBin '$Bin';
 # Due to their large size, graphs are split in parts; to add new graphs you need:
 # 1) URL of the first part (00), 2) natural of the last part, 3) md5sum of joined parts
 my %graphs;
+# Pan20-mmap-pro
 $graphs{'Pan20-mmap-pro'}{'subfolder'} = 'Pan20';
 $graphs{'Pan20-mmap-pro'}{'URL'} = 
   'https://github.com/eead-csic-compbio/barleygraph/releases/download/Pan20-mmap-pro-1.0/Pan20-mmap-pro00.part';
 $graphs{'Pan20-mmap-pro'}{'last'} = 13;
-$graphs{'Pan20-mmap-pro'}{'md5sum'} = '268a3ce14ebf250bc56b267557e24e49';
+$graphs{'Pan20-mmap-pro'}{'md5sum'} = '8822480664115a0ded5e1deb6b381733';
 
-# Pan20 gmap-geno
+# Pan20-gmap-geno
 $graphs{'Pan20-gmap-geno'}{'subfolder'} = 'Pan20';
 $graphs{'Pan20-gmap-geno'}{'URL'} = 
   'https://github.com/eead-csic-compbio/barleygraph/releases/download/Pan20-gmap-geno-1.0/Pan20-gmap-geno00.part';
