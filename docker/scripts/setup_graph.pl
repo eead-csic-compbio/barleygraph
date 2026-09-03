@@ -37,15 +37,16 @@ my $graph_list_file = $target_path . '/graph_list.tsv';
 my ($graph,$tgzfile,$part,$partfile,$url,$cmd,$sum,$path,$subfolder);
 my (%opts,@temp);
 
-getopts('hglG:', \%opts);
+getopts('hglIG:', \%opts);
 
 if(($opts{'h'})||(scalar(keys(%opts))==0)) {
   print "Usage: $0 [options]\n\n";
   print "-h this message\n";
-  print "-l list available pangenome graphs          (optional)\n";
-  print "-G graph name, should be in supported list  (required, example: -G Pan20-mmap-pro)\n";
-  print "-g compute GMAP indices                     (optional, required for align2graph)\n";
-  #print "\nPrimary citation:\n";
+  print "-l list pangenome graphs available for download  (optional)\n";
+  print "-I list installed pangenome graphs               (optional)\n";
+  print "-G graph name, should be in supported list       (required, example: -G Pan20-mmap-pro)\n";
+  print "-g compute GMAP indices                          (optional, required for align2graph)\n";
+  print "\ncitation: Sarria J et al (2026) bioRxiv 2026.08.06.741139; doi: https://doi.org/10.64898/2026.08.06.741139\n";
   exit(0);
 }
 
@@ -53,6 +54,18 @@ if(defined($opts{'l'})) {
   foreach $graph (sort keys(%graphs)) {
     print "$graph => $graphs{$graph}{'URL'}\n";
   }
+  exit(0);
+}
+
+if(defined($opts{'I'})) {
+  if(-e $graph_list_file) {
+    open(LIST,"<",$graph_list_file) ||
+      die "# ERROR: cannot read $graph_list_file\n";
+    while(<LIST>) {
+      print
+    }
+    close(LIST);  
+  } 
   exit(0);
 }
 
