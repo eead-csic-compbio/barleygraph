@@ -3,7 +3,8 @@
 BARLEYGRAPH provides [PHG](https://github.com/maize-genetics/phg_v2)-based barley pangenome graphs 
 for **sequence mapping** and **haplotype analysis**. This software is to be used from a 
 [container](https://github.com/eead-csic-compbio?tab=packages&repo_name=barleygraph)
-shipping with prebuilt PHG graphs of barley pangenomes and tools.
+shipping with prebuilt graphs and tools.
+For convenience, sequence mapping can also be done on the Barleymap Web app, [graph mode](https://barleymap.eead.csic.es/barleymap/graph/).
 
 ![PHG_database](https://github.com/eead-csic-compbio/barleygraph/blob/main/miscellaneous/Esquema_PHG.png)
 
