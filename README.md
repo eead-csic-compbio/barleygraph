@@ -8,7 +8,7 @@ For convenience, sequence mapping can also be done on the Barleymap Web app, [gr
 
 ![PHG_database](https://github.com/eead-csic-compbio/barleygraph/blob/main/miscellaneous/Esquema_PHG.png)
 
->    It is based on 2.4 phg version.
+>    It is based on PHG v2.4.
 >    
 >    Find here the [2.4.75.230 release](https://github.com/maize-genetics/phg_v2/releases/tag/2.4.75.230).
 
@@ -16,10 +16,10 @@ For convenience, sequence mapping can also be done on the Barleymap Web app, [gr
 
 Inspired by [BARLEYMAP](https://barleymap.eead.csic.es),
 sequence alignments are performed with [GMAP](http://research-pub.gene.com/gmap), which supports both 
-genomic sequences and transcripts. The genome sequences making up a pangenome graph are scanned hierarchically; 
+genomic sequences and transcripts. The genome sequences making up a pangenome graph are scanned hierarchically starting with MorexV3; 
 the scan stops with the first match. GMAP matches and precomputed graph ranges are intersected with
 [BEDTOOLS](https://bedtools.readthedocs.io/en/latest). Genome assembly compression and management are done with 
-[AGC 3.1](https://github.com/refresh-bio/agc).
+[AGC](https://github.com/refresh-bio/agc).
 
 > If your aim is to align barley sequences and locate them in the individual genomes of the graph, you may want to try the [graph mode](https://barleymap.eead.csic.es/barleymap/graph/) in the Barleymap Web app. It is user-friendly, quick and alignments are computed remotely. 
 
@@ -29,12 +29,12 @@ the scan stops with the first match. GMAP matches and precomputed graph ranges a
 #### Available pangenome graphs
 
 Currently this repository distributes flavours of the **Pan20** graph. 
-Note that the reference is **MorexV3** as annotated 
-at [IPK](https://galaxy-web.ipk-gatersleben.de/libraries/folders/Fa676e8f07209a3be/dataset/78efbc10d9dd2218), HC genes only:
+Note that the reference is **MorexV3** as annotated at 
+[IPK](https://galaxy-web.ipk-gatersleben.de/libraries/folders/Fa676e8f07209a3be/dataset/78efbc10d9dd2218), HC genes only:
 
 |graph|notes|genome names and scan order|
 |:----|:----|:-----------|
-|Pan20|Barley pangenome V1|MorexV3, Barke, HOR_9043, HOR_10350, HOR_3081, HOR_3365, Planet, HOR_7552, Akashinriki, OUN333, HOR_13942, HOR_13821, HOR_21599, Igri, Chiba, B1K-04-12, Du_Li_Huang, HOR_8148, GoldenPromise, Hockett|
+|Pan20|genomes in barley pangenome V1, latest available assemblies|MorexV3, Barke, HOR_9043, HOR_10350, HOR_3081, HOR_3365, Planet, HOR_7552, Akashinriki, OUN333, HOR_13942, HOR_13821, HOR_21599, Igri, Chiba, B1K-04-12, Du_Li_Huang, HOR_8148, GoldenPromise, Hockett|
 
 ---
 
