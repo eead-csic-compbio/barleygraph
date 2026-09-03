@@ -51,7 +51,7 @@ if(($opts{'h'})||(scalar(keys(%opts))==0)) {
   #print "-B path to [mini]bwa binary                        (optional, example: -B /path/to/[mini]bwa)\n";
   #print "-A all sites in output VCF, not just variants      (optional, by default only variants are considered)\n";
   print "-R redo all steps even if results are in place     (optional, by default previous results are re-used)\n";
-  #print "\nPrimary citation:\n";
+  print "\ncitation: Sarria J et al (2026) bioRxiv 2026.08.06.741139; doi: https://doi.org/10.64898/2026.08.06.741139\n";
   exit(0);
 }
 
