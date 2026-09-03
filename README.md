@@ -181,8 +181,9 @@ See the files at [graphs/](https://github.com/eead-csic-compbio/barleygraph/tree
 
 ### Citation
 
+Sarria J, Amhal H, Ramírez CJ, Igartua E, Casas AM, Contreras-Moreira B (2026) A pangenome-graph approach for mapping and imputing barley sequences. bioRxiv 2026.08.06.741139; doi: https://doi.org/10.64898/2026.08.06.741139
 
-##3 Funding 
+## Funding 
 
 This work was supported by AEI/10.13039/501100011033/FEDER/UE [PID2022-142116OB-I00 and predoctoral contract PREP2022_EEAD_52 to JSA], Horizon 2020 PRIMA [PCI2019-103526] and SusCrop ERA-NET Recobar [771134], Government of Aragon [A08_23R] and CSIC [FAS2022_052, INFRA24018].
 
