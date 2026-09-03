@@ -1313,6 +1313,7 @@ def process_sequences_serial(args):
     print(f"# add_ranges: {do_add_ranges} (Tool: {aligner_tool if do_add_ranges else 'None'})")
     print(f"# force_ranges: {force_ranges}")
     print(f"# genomic: {genomic}")
+    print("# citation: Sarria J et al (2026) bioRxiv 2026.08.06.741139; doi: https://doi.org/10.64898/2026.08.06.741139");
 
     if single_genome != '' and do_add_ranges:
         print(f"# WARNING: --add_ranges may not work properly when --single_genome is used")
