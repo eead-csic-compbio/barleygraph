@@ -32,11 +32,10 @@ Currently this repository distributes flavours of the **Pan20** graph.
 Note that the reference is **MorexV3** as annotated at 
 [IPK](https://galaxy-web.ipk-gatersleben.de/libraries/folders/Fa676e8f07209a3be/dataset/78efbc10d9dd2218), HC genes only:
 
-|graph|notes|genome names and scan order|
-|:----|:----|:-----------|
-|Pan20|genomes in barley pangenome V1, latest available assemblies|MorexV3, Barke, HOR_9043, HOR_10350, HOR_3081, HOR_3365, Planet, HOR_7552, Akashinriki, OUN333, HOR_13942, HOR_13821, HOR_21599, Igri, Chiba, B1K-04-12, Du_Li_Huang, HOR_8148, GoldenPromise, Hockett|
-
-
+|graph|genomes sorted by scan order/contributed ranges|
+|:----|:----------------------------------------------|
+|Pan20-mmap-pro|MorexV3, Hockett, Igri, Du_Li_Huang, Planet, HOR_9043, Barke, HOR_13821, HOR_21599, HOR_3365, HOR_8148, HOR_13942, GoldenPromise, B1K-04-12, HOR_10350, HOR_7552, OUN333, Chiba, Akashinriki, HOR_3081|
+|Pan20-gmap-geno|MorexV3, HOR_21599, GoldenPromise, Du_Li_Huang, Barke, HOR_7552, HOR_13821, Hockett, OUN333, Igri, HOR_8148, HOR_3081, Planet, HOR_9043, HOR_13942, Akashinriki, HOR_3365, Chiba, HOR_10350, B1K-04-12|
 
 ### Quick start Docker guide
 
