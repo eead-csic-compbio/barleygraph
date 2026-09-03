@@ -134,9 +134,7 @@ if(defined($opts{'G'})) {
   $cmd = "tar xvfz $tgzfile -C $path";
   run_cmd($cmd, "# 3 Unpacking graph ..."); 
 
-  # download graph config yaml & samplelist files
-  $cmd = "wget -qO $path/$graph/$graph.yaml -c $graph_master_url$graph.yaml";
-  run_cmd($cmd, "# 4.1 Downloading $graph.yaml");
+  # download graph samplelist file
   $cmd = "wget -qO $path/$subfolder\_samplelist.tsv -c $graph_master_url$subfolder\_samplelist.tsv";
   run_cmd($cmd, "# 4.2 Downloading $graph\_samplelist.tsv");
   
