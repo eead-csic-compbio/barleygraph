@@ -41,7 +41,7 @@ Note that the reference is **MorexV3** as annotated at
 
 **1. Pull the Docker Image**. Download an image from the GitHub Container Registry:
 
-    docker pull ghcr.io/eead-csic-compbio/barleygraph:2026-09-03
+    docker pull ghcr.io/eead-csic-compbio/barleygraph:2026-09-04
 
 **2. Create local persistent folders for graphs & GMAP indices**. This is done in the host computer, outside the container. This is required to keep persistent graph data separated from the code (Docker). You will need abundant disk space for the data. For instance, the downloadable `Pan20-mmap-pro` graph takes up to 20GB and supports haplotype analysis only. You would need another 150GB should you build the GMAP indices required for align2grap. For instance, in Linux you could create the following folders in your home:
 
