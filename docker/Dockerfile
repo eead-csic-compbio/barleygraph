@@ -119,6 +119,8 @@ RUN rm -rf /opt/miniconda3/pkgs/*
 ENV PATH="/barleygraph:${GPATH}/bin:${PHGPATH}:${PATH}"
 #SHELL ["conda", "run", "--no-capture-output", "-n", "phgv2.4", "/bin/bash", "-c"]
 
-RUN useradd --create-home --shell /bin/bash you
-ENV USER=you
-USER you
+RUN useradd --shell /bin/bash -m appuser
+USER appuser
+#RUN useradd --create-home --shell /bin/bash you
+#ENV USER=you
+#USER you
