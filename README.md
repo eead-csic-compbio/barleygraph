@@ -63,16 +63,16 @@ See examples below on how to actually analyze your own input.
 **5. Check installed and setup graphs**. Try the following commands:
 
     # list graphs that can be downloaded from this site
-    docker run -it -v ${HOME}/gmap_db/:/gmap_db -v ${HOME}/graph_db:/graph_db ghcr.io/eead-csic-compbio/barleygraph:latest setup_graph -l
+    docker run -it -v ${HOME}/graph_db:/graph_db ghcr.io/eead-csic-compbio/barleygraph:latest setup_graph -l
 
     # see currently locally installed graphs
-    docker run -it -v ${HOME}/gmap_db/:/gmap_db -v ${HOME}/graph_db:/graph_db ghcr.io/eead-csic-compbio/barleygraph:latest setup_graph -I
+    docker run -it -v ${HOME}/graph_db:/graph_db ghcr.io/eead-csic-compbio/barleygraph:latest setup_graph -I
 
     # download and install a listed graph, this will take an hour
-    setup_graph -G Pan20-mmap-pro
+    docker run -it -v ${HOME}/graph_db:/graph_db ghcr.io/eead-csic-compbio/barleygraph:latest setup_graph -G Pan20-mmap-pro
 
     # optionally make GMAP indices; required to run align2graph, will take more time 
-    setup_graph -G Pan20-mmap-pro -g
+    docker run -it -v ${HOME}/gmap_db/:/gmap_db -v ${HOME}/graph_db:/graph_db ghcr.io/eead-csic-compbio/barleygraph:latest setup_graph -G Pan20-mmap-pro -g
 
 **6. Imputate and call haplotypes** requires 1 single-end or 2 pair-end FASTQ files, which might be compressed. This step requires over 24GB RAM:
 
@@ -202,13 +202,16 @@ Generate visual plots of haplotype blocks from h.vcf files showing how different
 
 ### Troubleshooting
 
-* If the `docker` commands above fail with an error similar to 
+* If the `docker` commands above fail with an error similar to `permission denied while trying to connect to the Docker daemon socket` please check the instructions at https://docs.docker.com/engine/install/linux-postinstall
 
-    permission denied while trying to connect to the Docker daemon socket
+* On Windows [WSL](https://learn.microsoft.com/es-es/windows/wsl/install) the container often requires [sudo](https://stackoverflow.com/questions/64710480/docker-client-under-wsl2-doesnt-work-without-sudo) to run.
 
-please check the instructions at https://docs.docker.com/engine/install/linux-postinstall
+* Downloading a graph (step 5) might fail due to network issues. In this case a solution is to run the container interactively with `docker run -it -v ${HOME}/graph_db:/graph_db ghcr.io/eead-csic-compbio/barleygraph:latest` and then run the setup command on the prompt, for instance `setup_graph -G Pan20-mmap-pro`. You might have to repeat the setup command several times if the connection is poor, but this way all the successfully downloaded graph parts are skipped.
 
-* test 
+* Building GMAP indices (step 5) requires some RAM; if you run out of memory you'll get an error message like `Killed agc getset`.
+
+* Imputation with Pan20 graphs requires over 24GB RAM; if you run out of memory you'll get an error message like `Exception in thread "main" java.lang.OutOfMemoryError: Java heap space`.
+
 
 ### References
 
