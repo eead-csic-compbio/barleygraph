@@ -45,14 +45,14 @@ Note that the reference is **MorexV3** as annotated at
 
 **2. Create local persistent folders for graphs & GMAP indices**. This is done in the host computer, outside the container. This is required to keep persistent graph data separated from the code (Docker). You will need abundant disk space for the data. For instance, the downloadable `Pan20-mmap-pro` graph takes up to 20GB and supports haplotype analysis only. You would need another 150GB should you build the GMAP indices required for align2grap. For instance, in Linux you could create the following folders in your home:
 
-    mkdir -m 777 -p ${HOME}/graph_db     #required
-    mkdir -m 777 -p ${HOME}/gmap_db      #required to run align2graph
+    mkdir -p ${HOME}/graph_db     #required
+    mkdir -p ${HOME}/gmap_db      #required to run align2graph
 
 These folders will be bound by the Docker container at runtime. Binding arguments look like this: `/full/path/local:/container`.
 
 **3. Create a local folder for results (optional)**. If you run the `imputation` and `haplopainting` scripts you will need also a writable folder to store results which you can review even when the container is off:
 
-    mkdir -m 777 -p ${HOME}/results
+    mkdir -p ${HOME}/results
 
 **4. Binding the local input folder**. You will need to add another argument to bind the folder containing your input FASTA and FASTQ files. For instance this could be a folder in your home which will be referrod to within the container as `/user`:
 
@@ -60,7 +60,7 @@ These folders will be bound by the Docker container at runtime. Binding argument
 
 See examples below on how to actually analyze your own input.
 
-**5. Check installed and setup graphs**. Try the following commands:
+**5. Check and setup graphs**. Try the following commands, the argument `-u $(id -u):$(id -g)` is required to make sure any written files belong to the user running the container:
 
     # list graphs that can be downloaded from this site
     docker run -it -v ${HOME}/graph_db:/graph_db ghcr.io/eead-csic-compbio/barleygraph:latest setup_graph -l
@@ -69,10 +69,10 @@ See examples below on how to actually analyze your own input.
     docker run -it -v ${HOME}/graph_db:/graph_db ghcr.io/eead-csic-compbio/barleygraph:latest setup_graph -I
 
     # download and install a listed graph, this will take an hour
-    docker run -it -v ${HOME}/graph_db:/graph_db ghcr.io/eead-csic-compbio/barleygraph:latest setup_graph -G Pan20-mmap-pro
+    docker run -it -u $(id -u):$(id -g) -v ${HOME}/graph_db:/graph_db ghcr.io/eead-csic-compbio/barleygraph:latest setup_graph -G Pan20-mmap-pro
 
     # optionally make GMAP indices; required to run align2graph, will take more time 
-    docker run -it -v ${HOME}/gmap_db/:/gmap_db -v ${HOME}/graph_db:/graph_db ghcr.io/eead-csic-compbio/barleygraph:latest setup_graph -G Pan20-mmap-pro -g
+    docker run -it -u $(id -u):$(id -g) -v ${HOME}/gmap_db/:/gmap_db -v ${HOME}/graph_db:/graph_db ghcr.io/eead-csic-compbio/barleygraph:latest setup_graph -G Pan20-mmap-pro -g
 
 **6. Imputate and call haplotypes** requires 1 single-end or 2 pair-end FASTQ files, which might be compressed. This step requires over 24GB RAM:
 
@@ -81,23 +81,24 @@ See examples below on how to actually analyze your own input.
 
     # run test FASTQ file, binding args are stored in variable for convenience
     BINDS="-v ${HOME}/results:/results -v ${HOME}/graph_db:/graph_db"
-    docker run -it ${BINDS}  ghcr.io/eead-csic-compbio/barleygraph:latest imputation -G Pan20-mmap-pro -1 test.fq -o /results/
+    docker run -it -u $(id -u):$(id -g) ${BINDS} ghcr.io/eead-csic-compbio/barleygraph:latest imputation -G Pan20-mmap-pro -1 test.fq -o /results/
 
     # example with input data provided by user, see step 4 and BINDS below
     BINDS="-v ${HOME}/datafiles/:/user -v ${HOME}/results:/results -v ${HOME}/graph_db:/graph_db"
-    docker run -it ${BINDS} ghcr.io/eead-csic-compbio/barleygraph:latest imputation -G Pan20-mmap-pro -1 /user/example.fq -o /results/
+    docker run -it -u $(id -u):$(id -g) ${BINDS} ghcr.io/eead-csic-compbio/barleygraph:latest imputation -G Pan20-mmap-pro -1 /user/example.fq -o /results/
 
 Thess command produce a hVCF output file `..._1.h.vcf` and a folder `..._1.hvcfdir/` that we can use in the next step.
 **Note**: If you want to imputate with several graphs make sure you use different output folders to store the results.
 
-**7. Paint haplotypes**. This requires an output folder produced in the previous step:
+**7. Paint haplotypes**. This requires results produced in the previous step, which we add to shell variable PREVRES for convenience:
 
     # check options
     docker run ghcr.io/eead-csic-compbio/barleygraph:latest haplopainting -h
 
     # run with previous imputation results
     BINDS="-v ${HOME}/results:/results -v ${HOME}/graph_db:/graph_db"
-    docker run -it ${BINDS} ghcr.io/eead-csic-compbio/barleygraph:latest haplopainting --hvcf-folder /results/..._1.hvcfdir/ --samples-list /results/..._1.hvcfdir/Pan20_samplelist.tsv -f pdf --plot-pangenome-references
+    PREVRES="--hvcf-folder /results/..._1.hvcfdir/ --samples-list /results/..._1.hvcfdir/Pan20_samplelist.tsv"
+    docker run -it -u $(id -u):$(id -g) ${BINDS} ghcr.io/eead-csic-compbio/barleygraph:latest haplopainting ${PREVRES} -f pdf --plot-pangenome-references
 
 In addition to BED files converted from the original hVCF, this command will produce haplotype plots in folder `/results/..._1.hvcfdir/plots/`, one per chromosome, with graph genomes on top and sample below:
 
@@ -201,6 +202,10 @@ Generate visual plots of haplotype blocks from h.vcf files showing how different
 
 
 ### Troubleshooting
+
+<!-- -u $(id -u):$(id -g) -->
+
+* If docker fails to download container due to no disk space left you might need to [change the location](https://evodify.com/change-docker-storage-location) of images, will require admin.
 
 * If the `docker` commands above fail with an error similar to `permission denied while trying to connect to the Docker daemon socket` please check the instructions at https://docs.docker.com/engine/install/linux-postinstall
 
