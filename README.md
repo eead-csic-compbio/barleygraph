@@ -48,7 +48,7 @@ Note that the reference is **MorexV3** as annotated at
     mkdir -p ${HOME}/graph_db     #required
     mkdir -p ${HOME}/gmap_db      #required to run align2graph
 
-These folders will be bound by the Docker container at runtime. Binding arguments look like this: `/full/path/local:/container`.
+These folders will be bound by the Docker container at runtime. Binding arguments look like this: `/full/path/local:/container/path`.
 
 **3. Create a local folder for results (optional)**. If you run the `imputation` and `haplopainting` scripts you will need also a writable folder to store results which you can review even when the container is off:
 
