@@ -74,7 +74,7 @@ See examples below on how to actually analyze your own input.
     # optionally make GMAP indices; required to run align2graph, will take more time 
     setup_graph -G Pan20-mmap-pro -g
 
-**6. Imputate and call haplotypes** requires 1 single-end or 2 pair-end FASTQ files, which might be compressed:
+**6. Imputate and call haplotypes** requires 1 single-end or 2 pair-end FASTQ files, which might be compressed. This step requires over 24GB RAM:
 
     # check options
     docker run -it ghcr.io/eead-csic-compbio/barleygraph:latest imputation
@@ -87,7 +87,8 @@ See examples below on how to actually analyze your own input.
     BINDS="-v ${HOME}/datafiles/:/user -v ${HOME}/results:/results -v ${HOME}/graph_db:/graph_db"
     docker run -it ${BINDS} ghcr.io/eead-csic-compbio/barleygraph:latest imputation -G Pan20-mmap-pro -1 /user/example.fq -o /results/
 
-Thess command produce a hVCF output file `..._1.h.vcf` and a folder `..._1.hvcfdir/` that we can use in the next setp.
+Thess command produce a hVCF output file `..._1.h.vcf` and a folder `..._1.hvcfdir/` that we can use in the next step.
+**Note**: If you want to imputate with several graphs make sure you use different output folders to store the results.
 
 **7. Paint haplotypes**. This requires an output folder produced in the previous step:
 
@@ -201,11 +202,13 @@ Generate visual plots of haplotype blocks from h.vcf files showing how different
 
 ### Troubleshooting
 
-If the `docker` commands above fail with an error similar to 
+* If the `docker` commands above fail with an error similar to 
 
     permission denied while trying to connect to the Docker daemon socket
 
 please check the instructions at https://docs.docker.com/engine/install/linux-postinstall
+
+* test 
 
 ### References
 
