@@ -1,0 +1,3 @@
+/scratch/PHG_barleymap/barleygraph/graphs/Example_Ara/data/GCA_036942445.1.fa
+/scratch/PHG_barleymap/barleygraph/graphs/Example_Ara/data/GCA_036942575.1.fa
+/scratch/PHG_barleymap/barleygraph/graphs/Example_Ara/data/GCA_036942965.1.fa

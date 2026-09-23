@@ -81,13 +81,14 @@ See examples below on how to actually analyze your own input.
 
     # run test FASTQ file, binding args are stored in variable for convenience
     BINDS="-v ${HOME}/results:/results -v ${HOME}/graph_db:/graph_db"
-    docker run -it -u $(id -u):$(id -g) ${BINDS} ghcr.io/eead-csic-compbio/barleygraph:latest imputation -G Pan20-mmap-pro -1 test.fq -o /results/
+    docker run -it -u $(id -u):$(id -g) ${BINDS} ghcr.io/eead-csic-compbio/barleygraph:latest imputation -G Pan20-mmap-pro -1 test.fq -o /results/ --min-reads 1
 
     # example with input data provided by user, see step 4 and BINDS below
     BINDS="-v ${HOME}/datafiles/:/user -v ${HOME}/results:/results -v ${HOME}/graph_db:/graph_db"
     docker run -it -u $(id -u):$(id -g) ${BINDS} ghcr.io/eead-csic-compbio/barleygraph:latest imputation -G Pan20-mmap-pro -1 /user/example.fq -o /results/
 
 Thess command produce a hVCF output file `..._1.h.vcf` and a folder `..._1.hvcfdir/` that we can use in the next step.
+The `--min-reads` option sets the minimum number of reads required per reference range; it defaults to `1`. Use `--min-reads 0` to impute all reference ranges regardless of read count.
 **Note**: If you want to imputate with several graphs make sure you use different output folders to store the results.
 
 **7. Paint haplotypes**. This requires results produced in the previous step, which we add to shell variable PREVRES for convenience:

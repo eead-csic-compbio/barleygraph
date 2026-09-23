@@ -2,6 +2,7 @@
 use strict;
 use warnings;
 use Getopt::Std;
+use Getopt::Long qw/GetOptions/;
 use File::Basename qw/ fileparse basename /; 
 use File::Copy;
 
@@ -22,7 +23,7 @@ use File::Copy;
 my ($cmd,$root,$key,$val,$cfile,$subfolder,$path);
 my (%opts,%config,@temp);
 my ($fqfiles,$output_file,$dogVCF,$redo,$allsites) = ('', '', 0, 0, 0);
-my ($threads,$chunksize,$minmatch,$outdir) = (5, 500, 101, '/tmp');
+my ($threads,$chunksize,$minmatch,$minreads,$outdir) = (5, 500, 101, 1, '/tmp');
 my $graph_db = "/graph_db";
 my $graph_list_file = $graph_db . '/graph_list.tsv';
 
@@ -32,6 +33,8 @@ my $agcEXE      = 'agc';
 #my $bedtoolsEXE = 'bedtools';
 #my $bcftoolsEXE = 'bcftools';
 
+Getopt::Long::Configure('pass_through');
+GetOptions(\%opts, 'min-reads=i');
 getopts('hlARgB:1:2:G:c:o:m:t:k:', \%opts);
 
 if(($opts{'h'})||(scalar(keys(%opts))==0)) {
@@ -46,6 +49,7 @@ if(($opts{'h'})||(scalar(keys(%opts))==0)) {
   #print "-g produce gVCF file                               (optional, requires vcf_dbs in config)\n";
   print "-o output folder                                   (optional, example: -o mysample, default -o $outdir)\n";
   print "-m min match length                                (optional, example: -m 150, default -m $minmatch)\n";
+  print "--min-reads minimum reads per reference range      (optional, example: --min-reads 2, default --min-reads $minreads)\n";
   print "-t threads                                         (optional, example: -t 12, default -d $threads)\n";
   #print "-k chunk size in bases                             (optional, example: -k 1000, default -k $chunksize\n";
   #print "-B path to [mini]bwa binary                        (optional, example: -B /path/to/[mini]bwa)\n";
@@ -155,6 +159,10 @@ if(defined($opts{'t'}) && $opts{'t'} >= 0) {
   $threads = $opts{'t'}
 }
 
+if(defined($opts{'min-reads'}) && $opts{'min-reads'} >= 0) {
+  $minreads = $opts{'min-reads'}
+}
+
 #if(defined($opts{'k'}) && $opts{'k'} >= 0) {
 #  $chunksize = $opts{'k'}
 #}
@@ -176,7 +184,7 @@ if($dogVCF == 0) {
 
 print "## read file(s): $fqfiles\n";
 print "## config file: $cfile\n";
-print "## params: -o $outdir -m $minmatch -t $threads -R $redo\n\n";
+print "## params: -o $outdir -m $minmatch --min-reads $minreads -t $threads -R $redo\n\n";
 
 # 0.1) check output
 if($redo == 0 && -e $output_file) {
@@ -218,7 +226,7 @@ if($redo == 1 || !-e $hvcf_file) {
   }	  
 
   $cmd = "phg find-paths --read-files $mapfile --output-dir $outdir --hvcf-dir $config{'hvcf_bed'} " .
-    "--path-type haploid --threads $threads --reference-genome $config{'reference_fasta'}";
+    "--path-type haploid --threads $threads --min-reads $minreads --reference-genome $config{'reference_fasta'}";
   run_cmd($cmd, "# 2 Running phg find-paths ...");
 
 } else {
