@@ -1010,7 +1010,7 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_fold
                                 bedtools_path='bedtools',grep_path='grep',
                                 agc_path='agc', agc_db_path='', 
                                 gmap_path='gmap', minimap_path='minimap',
-                                prefix='temp', path='/tmp/',
+                                fasta_prefix='temp', fasta_path='/tmp/',
                                 ranked_genomes=None,
                                 min_identity=0.0,
                                 verbose=False):
