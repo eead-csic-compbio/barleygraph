@@ -253,7 +253,7 @@ def align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
     if verbose:
         print(f"# INFO(align_sequence_to_ranges): agc_ranges: {agc_ranges} using {aligner_tool}")
 
-    # --- Step 1: Cut sequences from AGC database and save in temp file ---
+    # --- Step 1: Cut sequences from AGC database and save in dictionary ---
     command = f"{agc_path} getctg -p {agc_db_path} {' '.join(agc_ranges)}"
     try:
         result = subprocess.run(command,
@@ -401,7 +401,8 @@ def align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
         range_strand = '+'
 
         temp_file_name = write_temp_fasta_file([seqname,'query'],
-                                               {seqname:range_sequences[seqname], 'query':sequence})
+                                               {seqname:range_sequences[seqname], 
+                                                'query':sequence})
 
         command = f"cat {temp_file_name} | {gmap_path} -t 1 -n 1 -2"
         try:
@@ -482,6 +483,10 @@ def align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
             os.remove(temp_file_name)
 
         return []
+    
+    def reverse_complement(seq):
+        complement = str.maketrans('ACGTacgt', 'TGCAtgca')
+        return seq.translate(complement)[::-1]  
 
     # --- Step 2: Align using selected tool ---
     if aligner_tool in ('minimap', 'both'):
@@ -531,7 +536,37 @@ def align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
     if ranked_genomes:
         aligned_ranges.sort(key=lambda x: get_rank(x, ranked_genomes))
 
-    return ";".join(aligned_ranges)
+    # --- Step 3: cut sequence of aligned ranges and reverse if neg strand ---
+    ranges = []
+    range_seqs = {}
+    for range in aligned_ranges:
+        parsed = parse_graph_range_string(range)
+        if not parsed:
+            continue
+
+        command = f"{agc_path} getctg -p {agc_db_path} {parsed['chrom']}@{parsed['genome']}:{parsed['start']}-{parsed['end']}"
+        try:
+            result = subprocess.run(command,
+                                    shell=True, check=True, text=True, 
+                                    stdout=subprocess.PIPE,
+                                    stderr=subprocess.DEVNULL)
+
+            seq_lines = []
+            for line in result.stdout.splitlines():
+                if not line.startswith('>'):
+                    seq_lines.append(line.strip())
+            seq_str = ''.join(seq_lines)
+
+            if parsed['strand'] == '-':
+                seq_str = reverse_complement(seq_str)
+
+            range_seqs[range] = seq_str
+            ranges.append(range)
+
+        except subprocess.CalledProcessError as e:
+            print(f'# ERROR(align_sequence_to_ranges): agc failed for {range}, skipping this range')
+
+    return ";".join(aligned_ranges), ranges, range_seqs
 
 
 # %%
@@ -584,11 +619,14 @@ def filter_nested_agc_ranges(agc_ranges):
 
 # %%
 def get_overlap_ranges_reference(gmap_match,hapIDranges,genomes,bed_folder_path,
-                                coverage=0.75,mult_mappings='No',all_graph_matches=False,
+                                coverage=0.75,
+                                mult_mappings='No',
+                                all_graph_matches=False,
                                 aligner_tool='gmap',
                                 bedtools_path='bedtools',grep_path='grep',
                                 agc_path='agc', agc_db_path='', 
                                 gmap_path='gmap', minimap_path='minimap',
+                                fasta_prefix='temp', fasta_path='/tmp/',
                                 ranked_genomes=None,
                                 min_identity=0.0,
                                 verbose=False):
@@ -599,7 +637,8 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,genomes,bed_folder_path,
     Returns: string with matched coords in TSV format.
     Column order in TSV: ref_chr, ref_start, ref_end, ref_strand (. if absent in ref), 
     match_genome, match_chr, match_start, match_end, match_strand, 
-    match_identity,match_coverage,other_matches (Yes/No),graph_ranges."""
+    match_identity,match_coverage,other_matches (Yes/No),graph_ranges.
+    Note: last item in graph_ranges is a temporary FASTA path with range sequences."""
 
     keys = {}   # Allows storing multiple keys 
     match_tsv = ''
@@ -714,7 +753,7 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,genomes,bed_folder_path,
                     agc_ranges = filter_nested_agc_ranges(agc_ranges)
                     # Always use gmap for evaluation, regardless of add_ranges setting
                     eval_aligner_tool = aligner_tool if aligner_tool else 'gmap'
-                    aligned_ranges = align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
+                    aligned_ranges, ranges, range_seqs = align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
                                                                     gmap_match['sequence'], agc_ranges,
                                                                     ranked_genomes=ranked_genomes,
                                                                     aligner_tool=eval_aligner_tool,
@@ -741,8 +780,16 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,genomes,bed_folder_path,
             match_tsv = (
                 f'{ref_chr}\t{ref_start}\t{ref_end}\t{strand}\t'
                 f'{genome}\t{chrom}\t{start}\t{end}\t{strand}\t{ident}\t{cover}\t{mult_mappings}\t')
+
             # Only return graph ranges if add_ranges was requested
-            all_ranges = best_match if (best_match and aligner_tool) else "."
+            # Note: temp FASTA path is concatenated to ranges
+            if best_match and aligner_tool:
+                all_ranges = best_match
+                multifastafile = write_temp_fasta_file(ranges, range_seqs, 
+                                                       fasta_prefix, fasta_path)
+                all_ranges = all_ranges + ";" + multifastafile
+            else:
+                all_ranges = '.'
         else:
             match_tsv = f'.\t.\t.\t.\t{genome}\t{chrom}\t{start}\t{end}\t{strand}\t{ident}\t{cover}\t{mult_mappings}\t'
             all_ranges = ""
@@ -963,6 +1010,7 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_fold
                                 bedtools_path='bedtools',grep_path='grep',
                                 agc_path='agc', agc_db_path='', 
                                 gmap_path='gmap', minimap_path='minimap',
+                                prefix='temp', path='/tmp/',
                                 ranked_genomes=None,
                                 min_identity=0.0,
                                 verbose=False):
@@ -974,7 +1022,8 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_fold
     Returns: string with matched coords in TSV format.
     Column order in TSV: ref_chr, ref_start, ref_end, ref_strand (. if absent in ref), 
     match_genome, match_chr, match_start, match_end, match_strand, 
-    match_identity,match_coverage,other_matches (Yes/No),graph_ranges."""
+    match_identity,match_coverage,other_matches (Yes/No),graph_ranges.
+    Note: last item in graph_ranges is a temporary FASTA path with range sequences."""
 
     keys = {}
     match_tsv = ''
@@ -1106,7 +1155,7 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_fold
                     agc_ranges = filter_nested_agc_ranges(agc_ranges)
                     # Always use gmap for evaluation, regardless of add_ranges setting
                     eval_aligner_tool = aligner_tool if aligner_tool else 'gmap'
-                    aligned_ranges_result = align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
+                    aligned_ranges_result, ranges, range_seqs = align_sequence_to_ranges(agc_path, agc_db_path, gmap_path,
                                                                 gmap_match['sequence'], agc_ranges,
                                                                 ranked_genomes=ranked_genomes,
                                                                 aligner_tool=eval_aligner_tool,
@@ -1139,8 +1188,14 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_fold
         print(f'ERROR(get_overlap_ranges_pangenome): {e.cmd} failed: {e.stderr}')
     
     # Only return graph ranges if add_ranges was requested, otherwise return empty
-    final_ranges = best_match if aligner_tool else '.'
-    
+    # Note: temp FASTA path is concatenated to ranges
+    if aligner_tool:
+        final_ranges = best_match
+        multifastafile = write_temp_fasta_file(ranges, range_seqs, prefix, path)
+        final_ranges = final_ranges + ";" + multifastafile
+    else:
+        final_ranges = '.'
+
     return match_tsv + final_ranges
 
 
@@ -1411,6 +1466,7 @@ def process_sequences_serial(args):
                     agc_db_path=agc_db,
                     gmap_path=gmap_exe,
                     minimap_path=minimap_exe,
+                    fasta_prefix=temp_prefix, fasta_path=temp_path,
                     ranked_genomes=ranked_pangenome_genomes,
                     min_identity=min_identity,
                     verbose=verbose_out)
@@ -1432,6 +1488,7 @@ def process_sequences_serial(args):
                     agc_db_path=agc_db,
                     gmap_path=gmap_exe,
                     minimap_path=minimap_exe,
+                    fasta_prefix=temp_prefix, fasta_path=temp_path,
                     ranked_genomes=ranked_pangenome_genomes,
                     min_identity=min_identity,
                     verbose=verbose_out)
