@@ -1191,7 +1191,7 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_fold
     # Note: temp FASTA path is concatenated to ranges
     if aligner_tool:
         final_ranges = best_match
-        multifastafile = write_temp_fasta_file(ranges, range_seqs, prefix, path)
+        multifastafile = write_temp_fasta_file(ranges, range_seqs, fasta_prefix, fasta_path)
         final_ranges = final_ranges + ";" + multifastafile
     else:
         final_ranges = '.'
