@@ -1277,6 +1277,12 @@ def main():
     )   # If used together with add_ranges a warning is printed
 
     parser.add_argument(
+        "--save_fasta",
+        action='store_true',
+        help="save sequences of aligned graph matches to FASTA file, requires --add_ranges",
+        )
+
+    parser.add_argument(
         '--verb', 
         action='store_true', 
         help='Increase verbosity in output'
@@ -1353,6 +1359,8 @@ def process_sequences_serial(args):
     aligner_tool  = args.add_ranges
     do_add_ranges = (aligner_tool is not None)
     force_ranges  = args.force_ranges
+    if do_add_ranges:  
+        save_fasta = args.save_fasta 
     
     single_genome = args.single_genome
 
@@ -1367,10 +1375,10 @@ def process_sequences_serial(args):
     print(f"# minimum identity %: {min_identity}")
     print(f"# minimum coverage %: {min_coverage}")
     print(f"# minimum coverage range %: {min_coverage_range}")
-    print(f"# add_ranges: {do_add_ranges} (Tool: {aligner_tool if do_add_ranges else 'None'})")
+    print(f"# add_ranges: {do_add_ranges} (Tool: {aligner_tool if do_add_ranges else 'None'}, save_fasta: {save_fasta if do_add_ranges else 'None'})")
     print(f"# force_ranges: {force_ranges}")
     print(f"# genomic: {genomic}")
-    print("# citation: Sarria J et al (2026) bioRxiv 2026.08.06.741139; doi: https://doi.org/10.64898/2026.08.06.741139");
+    print("# citation: Sarria J et al (2026) bioRxiv 2026.08.06.741139; doi: https://doi.org/10.64898/2026.08.06.741139\n");
 
     if single_genome != '' and do_add_ranges:
         print(f"# WARNING: --add_ranges may not work properly when --single_genome is used")
@@ -1471,7 +1479,7 @@ def process_sequences_serial(args):
                     agc_db_path=agc_db,
                     gmap_path=gmap_exe,
                     minimap_path=minimap_exe,
-                    fasta_prefix=f_prefix, 
+                    fasta_prefix=f_prefix if save_fasta else '', 
                     fasta_path=temp_path,
                     ranked_genomes=ranked_pangenome_genomes,
                     min_identity=min_identity,
@@ -1494,7 +1502,7 @@ def process_sequences_serial(args):
                     agc_db_path=agc_db,
                     gmap_path=gmap_exe,
                     minimap_path=minimap_exe,
-                    fasta_prefix=f_prefix, 
+                    fasta_prefix=f_prefix if save_fasta else '', 
                     fasta_path=temp_path,
                     ranked_genomes=ranked_pangenome_genomes,
                     min_identity=min_identity,
