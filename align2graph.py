@@ -626,7 +626,7 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,genomes,bed_folder_path,
                                 bedtools_path='bedtools',grep_path='grep',
                                 agc_path='agc', agc_db_path='', 
                                 gmap_path='gmap', minimap_path='minimap',
-                                fasta_prefix='temp', fasta_path='/tmp/',
+                                fasta_prefix='', fasta_path='/tmp/',
                                 ranked_genomes=None,
                                 min_identity=0.0,
                                 verbose=False):
@@ -638,7 +638,7 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,genomes,bed_folder_path,
     Column order in TSV: ref_chr, ref_start, ref_end, ref_strand (. if absent in ref), 
     match_genome, match_chr, match_start, match_end, match_strand, 
     match_identity,match_coverage,other_matches (Yes/No),graph_ranges.
-    Note: last item in graph_ranges is a temporary FASTA path with range sequences."""
+    Note: when fasta_prefix is not empty the last item in graph_ranges is a temporary FASTA path with range sequences"""
 
     keys = {}   # Allows storing multiple keys 
     match_tsv = ''
@@ -785,9 +785,10 @@ def get_overlap_ranges_reference(gmap_match,hapIDranges,genomes,bed_folder_path,
             # Note: temp FASTA path is concatenated to ranges
             if best_match and aligner_tool:
                 all_ranges = best_match
-                multifastafile = write_temp_fasta_file(ranges, range_seqs, 
-                                                       fasta_prefix, fasta_path)
-                all_ranges = all_ranges + ";" + multifastafile
+                if fasta_prefix != '' and ranges and range_seqs:
+                    multifastafile = write_temp_fasta_file(ranges, range_seqs, 
+                                                           fasta_prefix, fasta_path)
+                    all_ranges = all_ranges + ";" + multifastafile
             else:
                 all_ranges = '.'
         else:
@@ -1010,7 +1011,7 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_fold
                                 bedtools_path='bedtools',grep_path='grep',
                                 agc_path='agc', agc_db_path='', 
                                 gmap_path='gmap', minimap_path='minimap',
-                                fasta_prefix='temp', fasta_path='/tmp/',
+                                fasta_prefix='', fasta_path='/tmp/',
                                 ranked_genomes=None,
                                 min_identity=0.0,
                                 verbose=False):
@@ -1023,7 +1024,7 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_fold
     Column order in TSV: ref_chr, ref_start, ref_end, ref_strand (. if absent in ref), 
     match_genome, match_chr, match_start, match_end, match_strand, 
     match_identity,match_coverage,other_matches (Yes/No),graph_ranges.
-    Note: last item in graph_ranges is a temporary FASTA path with range sequences."""
+    Note: when fasta_prefix is not empty the last item in graph_ranges is a temporary FASTA path with range sequences"""
 
     keys = {}
     match_tsv = ''
@@ -1191,8 +1192,9 @@ def get_overlap_ranges_pangenome(gmap_match,hapIDranges,genomes,bedfile,bed_fold
     # Note: temp FASTA path is concatenated to ranges
     if aligner_tool:
         final_ranges = best_match
-        multifastafile = write_temp_fasta_file(ranges, range_seqs, fasta_prefix, fasta_path)
-        final_ranges = final_ranges + ";" + multifastafile
+        if fasta_prefix != '' and ranges and range_seqs:
+            multifastafile = write_temp_fasta_file(ranges, range_seqs, fasta_prefix, fasta_path)
+            final_ranges = final_ranges + ";" + multifastafile
     else:
         final_ranges = '.'
 
@@ -1419,7 +1421,6 @@ def process_sequences_serial(args):
     for seqname in gmap_matches:
         for match in gmap_matches[seqname]:
             genomes_already_gmapped.add(match['genome'])
-    
 
 
     # print header
@@ -1444,6 +1445,10 @@ def process_sequences_serial(args):
         in_graph_genomes = set()
         out_graph_genomes = set()
 
+        # work out prefix for output FASTA file for this sequence  
+        f_prefix = f"{os.path.basename(args.graph_yaml).replace('.yaml','')}-{seqname}-{min_identity}-{min_coverage}"
+        f_prefix = re.sub(r'[^a-zA-Z0-9_\-\.]', '_', f_prefix)
+
         for match in gmap_matches[seqname]:
 
             # multmaps refers only to the genome shown in column 6
@@ -1466,7 +1471,8 @@ def process_sequences_serial(args):
                     agc_db_path=agc_db,
                     gmap_path=gmap_exe,
                     minimap_path=minimap_exe,
-                    fasta_prefix=temp_prefix, fasta_path=temp_path,
+                    fasta_prefix=f_prefix, 
+                    fasta_path=temp_path,
                     ranked_genomes=ranked_pangenome_genomes,
                     min_identity=min_identity,
                     verbose=verbose_out)
@@ -1488,7 +1494,8 @@ def process_sequences_serial(args):
                     agc_db_path=agc_db,
                     gmap_path=gmap_exe,
                     minimap_path=minimap_exe,
-                    fasta_prefix=temp_prefix, fasta_path=temp_path,
+                    fasta_prefix=f_prefix, 
+                    fasta_path=temp_path,
                     ranked_genomes=ranked_pangenome_genomes,
                     min_identity=min_identity,
                     verbose=verbose_out)
